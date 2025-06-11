@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:youthbuk/member/profile_signup_page.dart';
 import 'package:youthbuk/member/signup_page.dart';
 
@@ -27,83 +28,158 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('로그인'), centerTitle: true),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: _emailCtrl,
-                  decoration: InputDecoration(
-                    labelText: '이메일',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return '이메일을 입력해주세요';
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
-                      return '유효한 이메일이 아닙니다';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _pwCtrl,
-                  decoration: InputDecoration(
-                    labelText: '비밀번호',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _hidePassword ? Icons.visibility_off : Icons.visibility,
+    return ScreenUtilInit(
+      designSize: const Size(375, 812),
+      builder:
+          (_, __) => Scaffold(
+            backgroundColor: const Color(0xFFFFEB3B),
+            body: Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 32.w),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(height: 60.h),
+                      Image.asset(
+                        'assets/images/login_logo.png',
+                        width: 120.w,
+                        height: 120.h,
                       ),
-                      onPressed:
-                          () => setState(() => _hidePassword = !_hidePassword),
-                    ),
+                      SizedBox(height: 40.h),
+                      TextFormField(
+                        controller: _emailCtrl,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.person, size: 24.sp),
+                          hintText: '이메일 주소',
+                          hintStyle: TextStyle(fontSize: 14.sp),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30.r),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty)
+                            return '이메일을 입력해주세요';
+                          if (!RegExp(
+                            r'^[^@]+@[^@]+\.[^@]+',
+                          ).hasMatch(v.trim())) {
+                            return '유효한 이메일이 아닙니다';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16.h),
+                      TextFormField(
+                        controller: _pwCtrl,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.lock, size: 24.sp),
+                          hintText: '비밀번호',
+                          hintStyle: TextStyle(fontSize: 14.sp),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30.r),
+                            borderSide: BorderSide.none,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _hidePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              size: 20.sp,
+                            ),
+                            onPressed:
+                                () => setState(
+                                  () => _hidePassword = !_hidePassword,
+                                ),
+                          ),
+                        ),
+                        obscureText: _hidePassword,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return '비밀번호를 입력해주세요';
+                          if (v.length < 6) return '6자 이상 입력해주세요';
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 24.h),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50.h,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30.r),
+                            ),
+                          ),
+                          onPressed: _isLoading ? null : _login,
+                          child:
+                              _isLoading
+                                  ? SizedBox(
+                                    width: 20.w,
+                                    height: 20.h,
+                                    child: const CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : Text(
+                                    '로그인',
+                                    style: TextStyle(fontSize: 16.sp),
+                                  ),
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed:
+                                () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SignupPage(),
+                                  ),
+                                ),
+                            child: Text(
+                              '회원가입',
+                              style: TextStyle(fontSize: 14.sp),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {},
+                            child: Text(
+                              '비밀번호 찾기',
+                              style: TextStyle(fontSize: 14.sp),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16.h),
+                      const Divider(),
+                      SizedBox(height: 12.h),
+                      Text('간편 로그인', style: TextStyle(fontSize: 14.sp)),
+                      SizedBox(height: 12.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            iconSize: 36.sp,
+                            onPressed: () {},
+                            icon: Image.asset('assets/icons/google.png'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  obscureText: _hidePassword,
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return '비밀번호를 입력해주세요';
-                    if (v.length < 6) return '6자 이상 입력해주세요';
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
-                    child:
-                        _isLoading
-                            ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                            : const Text('로그인'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SignupPage()),
-                    );
-                  },
-                  child: const Text('계정이 없으신가요? 회원가입'),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
 
@@ -120,18 +196,15 @@ class _LoginPageState extends State<LoginPage> {
       );
       final user = userCred.user;
       if (user != null) {
-        // 로그인 성공: Firestore에 프로필 문서가 있는지 확인
         final doc =
             await FirebaseFirestore.instance
                 .collection('users')
                 .doc(user.uid)
                 .get();
         if (doc.exists) {
-          // 프로필이 이미 있으면 홈 화면으로 이동
           if (!mounted) return;
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
-          // 프로필 문서가 없으면 프로필 설정 페이지로 이동
           if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => ProfileSignupPage(user: user)),
