@@ -1,14 +1,9 @@
-// lib/search/search_page.dart
-
 import 'package:flutter/material.dart';
-import 'package:youthbuk/search/models/region.dart';
-import 'package:youthbuk/search/services/region_repository.dart';
-import 'package:youthbuk/search/widgets/region_card.dart';
-import 'package:youthbuk/search/village_list_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:youthbuk/search/models/village.dart';
-import 'package:youthbuk/search/services/village_repository.dart';
 import 'package:youthbuk/search/village_detail_page%20.dart';
+import 'package:youthbuk/search/village_list_page.dart';
+import 'package:youthbuk/search/widgets/region_grid.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -16,348 +11,269 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
-  bool isListView = true;
-  final List<String> tabs = ['전체', '한 달 살이', '일주일 체험', '농활'];
+class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   int selectedTabIndex = 0;
-
-  late Future<List<RegionCount>> regionCountsFuture;
-  final RegionRepository repo = RegionRepository();
-
-  // Firestore 인스턴스 (추천 영역 실시간 반영용)
+  bool filterExpanded = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    regionCountsFuture = repo.fetchRegionCounts();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    const regionAspect = 3 / 2.5;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('탐색'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // 검색 아이콘 동작: 필요 시 구현
-            },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('탐색'),
+          centerTitle: true,
+          bottom: const TabBar(
+            indicatorColor: Colors.black,
+            labelColor: Colors.black,
+            unselectedLabelColor: Colors.grey,
+            labelStyle: TextStyle(fontWeight: FontWeight.bold),
+            tabs: [Tab(text: '지역별 보기'), Tab(text: '조건별 보기')],
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              // 필터 아이콘 동작: 필요 시 구현
-            },
-          ),
-        ],
+        ),
+        body: TabBarView(children: [RegionGrid(), _buildFilterTab()]),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 검색 필드
-            TextField(
-              decoration: InputDecoration(
-                hintText: '지역, 프로그램명을 검색하세요',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onSubmitted: (text) {
-                // 검색어 입력 후 동작: 필요 시 구현
-              },
-            ),
-            const SizedBox(height: 12),
+    );
+  }
 
-            // 탭 선택 (필터 로직은 필요시 추가 가능)
-            Row(
-              children: [
-                for (var i = 0; i < tabs.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(tabs[i]),
-                      selected: i == selectedTabIndex,
-                      onSelected:
-                          (_) => setState(() {
-                            selectedTabIndex = i;
-                            // 탭별 필터 로직이 필요하다면 이곳에서 상태를 변경하고,
-                            // regionCountsFuture나 추천 프로그램 필터 등을 다시 반영하세요.
-                          }),
-                    ),
+  Widget _buildFilterTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildFilterChips(),
+        const SizedBox(height: 24),
+        const Text(
+          '추천 프로그램',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        _buildRecommendedPrograms(),
+        const SizedBox(height: 24),
+        OutlinedButton(
+          onPressed: () {},
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text('더 많은 프로그램 보기'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChips() {
+    final List<Map<String, String>> tabsWithEmoji = [
+      {'emoji': '📋', 'label': '전체'},
+      {'emoji': '🌾', 'label': '농활'},
+      {'emoji': '🧪', 'label': '체험'},
+      {'emoji': '🗺️', 'label': '관광'},
+      {'emoji': '💪', 'label': '건강'},
+      {'emoji': '🎨', 'label': '공예'},
+      {'emoji': '🍳', 'label': '요리'},
+      {'emoji': '🐞', 'label': '곤충 관찰'},
+      {'emoji': '🎣', 'label': '낚시'},
+      {'emoji': '🍱', 'label': '먹거리'},
+    ];
+
+    final visibleCount = filterExpanded ? tabsWithEmoji.length : 5;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: List.generate(visibleCount, (i) {
+              final isSelected = selectedTabIndex == i;
+              return InkWell(
+                borderRadius: BorderRadius.circular(30),
+                onTap: () {
+                  setState(() {
+                    selectedTabIndex = i;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // 뷰 토글 (리스트/지도 등)
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                icon: Icon(isListView ? Icons.list : Icons.map),
-                onPressed: () => setState(() => isListView = !isListView),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // 지역 그리드: RegionCount 기반
-            FutureBuilder<List<RegionCount>>(
-              future: regionCountsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                } else if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Text(
-                      '지역 정보를 불러오는 중 오류: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  );
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Text('등록된 지역 정보가 없습니다.'),
-                  );
-                } else {
-                  final regionCounts = snapshot.data!;
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      const spacing = 12.0;
-                      const itemsPerRow = 3;
-                      final totalSpacing = spacing * (itemsPerRow - 1);
-                      final itemWidth =
-                          (constraints.maxWidth - totalSpacing) / itemsPerRow;
-                      return Wrap(
-                        spacing: spacing,
-                        runSpacing: spacing,
-                        children:
-                            regionCounts.map((rc) {
-                              return SizedBox(
-                                width: itemWidth,
-                                child: AspectRatio(
-                                  aspectRatio: regionAspect,
-                                  child: RegionCard(
-                                    name: rc.name,
-                                    count: rc.count,
-                                    onTap: () {
-                                      final isOthers = rc.name == '그 외';
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (_) => VillageListPage(
-                                                regionName: rc.name,
-                                                isOthers: isOthers,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                      );
-                    },
-                  );
-                }
-              },
-            ),
-
-            // ====== 추천 프로그램 영역 (StreamBuilder로 실시간 반영) ======
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  '추천 프로그램',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            StreamBuilder<QuerySnapshot>(
-              stream:
-                  _firestore
-                      .collection('Villages')
-                      .orderBy('rating', descending: true)
-                      .limit(5)
-                      .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      '추천 프로그램을 불러오는 중 오류: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  );
-                }
-                final querySnap = snapshot.data;
-                if (querySnap == null || querySnap.docs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text('추천할 프로그램이 없습니다.'),
-                  );
-                }
-                // 문서 리스트를 Village 모델 리스트로 변환
-                final topVillages =
-                    querySnap.docs.map((doc) {
-                      try {
-                        return Village.fromDoc(doc);
-                      } catch (_) {
-                        return Village.fromDoc(doc);
-                      }
-                    }).toList();
-
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: topVillages.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final v = topVillages[index];
-                    // 리뷰 개수 표시: 100 이상이면 '99+'
-                    final int count = v.reviewCount;
-                    final String displayCount =
-                        count >= 100 ? '99+' : count.toString();
-
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VillageDetailPage(village: v),
-                          ),
-                        );
-                      },
-                      child: Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 16,
-                          ),
-                          child: Row(
-                            children: [
-                              // 이미지가 있다면 왼쪽에 추가
-                              if (v.photoUrls != null &&
-                                  v.photoUrls!.isNotEmpty) ...[
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: Image.network(
-                                    v.photoUrls!.first,
-                                    width: 60,
-                                    height: 60,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stack) => Container(
-                                          width: 60,
-                                          height: 60,
-                                          color: Colors.grey.shade200,
-                                          child: const Icon(
-                                            Icons.broken_image,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                              ],
-
-                              // 왼쪽: 이름 및 카테고리
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      v.name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      v.categoryRaw,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.black : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow:
+                        isSelected
+                            ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
-
-                              // 우측: 평점 및 리뷰 개수
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.star,
-                                        size: 16,
-                                        color: Colors.orange,
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        v.rating.toStringAsFixed(1),
-                                        style: const TextStyle(fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '($displayCount)',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                            ]
+                            : [],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tabsWithEmoji[i]['emoji']!,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: isSelected ? Colors.white : Colors.black87,
                         ),
                       ),
-                    );
-                  },
-                );
-              },
-            ),
-
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  // “더 많은 프로그램 보기” 동작: 예: 평점순 전체 페이지로 이동 등
-                },
-                child: const Text('더 많은 프로그램 보기'),
-              ),
-            ),
-          ],
+                      const SizedBox(width: 6),
+                      Text(
+                        tabsWithEmoji[i]['label']!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: isSelected ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Center(
+          child: TextButton.icon(
+            onPressed: () {
+              setState(() {
+                filterExpanded = !filterExpanded;
+              });
+            },
+            icon: Icon(
+              filterExpanded
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down,
+            ),
+            label: Text(filterExpanded ? '접기' : '전체 보기'),
+            style: TextButton.styleFrom(foregroundColor: Colors.black87),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecommendedPrograms() {
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          _firestore
+              .collection('Villages')
+              .orderBy('rating', descending: true)
+              .limit(5)
+              .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Text(
+            '추천 프로그램 오류: ${snapshot.error}',
+            style: const TextStyle(color: Colors.red),
+          );
+        }
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return const Text('추천할 프로그램이 없습니다.');
+        }
+        final villages = docs.map((d) => Village.fromDoc(d)).toList();
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: villages.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (_, i) {
+            final v = villages[i];
+            final countStr =
+                v.reviewCount >= 100 ? '99+' : v.reviewCount.toString();
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              onTap:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VillageDetailPage(village: v),
+                    ),
+                  ),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child:
+                    v.photoUrls != null && v.photoUrls!.isNotEmpty
+                        ? Image.network(
+                          v.photoUrls!.first,
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                        )
+                        : Container(
+                          width: 60,
+                          height: 60,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image),
+                        ),
+              ),
+              title: Text(
+                v.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(v.categoryRaw),
+              trailing: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, size: 16, color: Colors.orange),
+                      const SizedBox(width: 4),
+                      Text(v.rating.toStringAsFixed(1)),
+                    ],
+                  ),
+                  Text(
+                    '($countStr)',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
