@@ -6,6 +6,8 @@ import 'package:youthbuk/search/all_reviews_page.dart';
 import 'package:youthbuk/search/models/village.dart';
 import 'package:youthbuk/search/widgets/recent_reviews_section.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:youthbuk/search/widgets/like_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class VillageDetailPage extends StatefulWidget {
   final Village village;
@@ -44,37 +46,99 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final village = widget.village;
-    return Scaffold(
-      appBar: AppBar(title: Text(village.name)),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isWide = constraints.maxWidth >= 600;
-          Widget imageSection = _buildImageSection(constraints.maxWidth);
-          Widget infoSection = _buildInfoSection(context);
-          if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: constraints.maxWidth * 0.4,
-                  child: imageSection,
-                ),
-                SizedBox(width: constraints.maxWidth * 0.6, child: infoSection),
-              ],
-            );
-          } else {
-            return SingleChildScrollView(
-              child: Column(children: [imageSection, infoSection]),
-            );
-          }
-        },
-      ),
+    final villageId = widget.village.id;
+    final docRef = _firestore.collection('Villages').doc(villageId);
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: docRef.snapshots(),
+      builder: (context, snapshot) {
+        // 오류 처리
+        if (snapshot.hasError) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(widget.village.name),
+              leading: BackButton(),
+              actions: [LikeButton(village: widget.village)],
+            ),
+            body: Center(child: Text('오류가 발생했습니다: ${snapshot.error}')),
+          );
+        }
+        // 로딩 상태
+        if (!snapshot.hasData) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(widget.village.name),
+              leading: BackButton(),
+              actions: [LikeButton(village: widget.village)],
+            ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        final doc = snapshot.data!;
+        // 문서 없으면
+        if (!doc.exists) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(widget.village.name),
+              leading: BackButton(),
+              actions: [LikeButton(village: widget.village)],
+            ),
+            body: const Center(child: Text('마을 정보를 찾을 수 없습니다.')),
+          );
+        }
+        final data = doc.data() as Map<String, dynamic>;
+
+        // Village 모델 변환: fromDoc 사용하다가 실패 시 fallback
+        late Village village;
+        try {
+          village = Village.fromDoc(doc);
+        } catch (_) {
+          // fallback: 최소한 widget.village 정보라도 사용
+          village = widget.village;
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(village.name),
+            leading: BackButton(),
+            actions: [LikeButton(village: village)],
+          ),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isWide = constraints.maxWidth >= 600;
+              Widget imageSection = _buildImageSection(
+                constraints.maxWidth,
+                village,
+              );
+              Widget infoSection = _buildInfoSection(context, village);
+              if (isWide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: constraints.maxWidth * 0.4,
+                      child: imageSection,
+                    ),
+                    SizedBox(
+                      width: constraints.maxWidth * 0.6,
+                      child: infoSection,
+                    ),
+                  ],
+                );
+              } else {
+                return SingleChildScrollView(
+                  child: Column(children: [imageSection, infoSection]),
+                );
+              }
+            },
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildImageSection(double maxWidth) {
-    final photos = widget.village.photoUrls;
+  Widget _buildImageSection(double maxWidth, Village village) {
+    final photos = village.photoUrls;
     if (photos == null || photos.isEmpty) {
       return Container(
         height: maxWidth * 0.6,
@@ -108,11 +172,41 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
     );
   }
 
-  Widget _buildInfoSection(BuildContext context) {
-    final village = widget.village;
+  Widget _buildInfoSection(BuildContext context, Village village) {
     final List<Widget> items = [];
 
-    // 1) 프로그램 목록
+    // 1) rating, reviewCount 표시
+    {
+      final rating = village.rating; // getter: averageRatingStored ?? 0.0
+      final reviewCount = village.reviewCount; // getter: reviewCountStored ?? 0
+      final String displayCount =
+          reviewCount >= 100 ? '99+' : reviewCount.toString();
+      items.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: Row(
+            children: [
+              const Icon(Icons.star, color: Colors.orange),
+              const SizedBox(width: 4),
+              Text(
+                rating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                '리뷰 $displayCount개',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 2) 프로그램 목록
     if (village.programNames.isNotEmpty) {
       items.add(
         Padding(
@@ -147,7 +241,7 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
       );
     }
 
-    // 2) 리뷰 섹션: RecentReviewsSection 사용
+    // 3) 최근 리뷰 섹션
     items.add(const SizedBox(height: 16));
     items.add(
       Padding(
@@ -197,7 +291,7 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
       ),
     );
 
-    // 3) 위치 정보
+    // 4) 위치 정보
     if (village.latitude != null && village.longitude != null) {
       items.add(const SizedBox(height: 12));
       items.add(
@@ -225,7 +319,7 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
       );
     }
 
-    // 4) 기타 정보: 관리기관명, 전화번호, 주소, 홈페이지
+    // 5) 기타 정보: 관리기관명, 전화번호, 주소, 홈페이지
     if (village.managerName != null && village.managerName!.isNotEmpty) {
       items.add(
         ListTile(

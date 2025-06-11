@@ -1,9 +1,7 @@
 // lib/search/widgets/review_card.dart
 
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:youthbuk/search/models/review_model.dart';
 import 'package:youthbuk/search/review_write_page.dart';
@@ -26,77 +24,6 @@ class ReviewCard extends StatefulWidget {
 }
 
 class _ReviewCardState extends State<ReviewCard> {
-  static final Map<String, String> _nicknameCache = {};
-  String? _displayName;
-  bool _isLoadingName = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadNickname();
-  }
-
-  Future<void> _loadNickname() async {
-    final authorId = widget.review.authorId;
-    if (authorId.isEmpty) {
-      setState(() {
-        _displayName = '익명';
-      });
-      return;
-    }
-    if (_nicknameCache.containsKey(authorId)) {
-      setState(() {
-        _displayName = _nicknameCache[authorId];
-      });
-    } else {
-      setState(() {
-        _isLoadingName = true;
-      });
-      try {
-        final doc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(authorId)
-                .get();
-        String name;
-        if (doc.exists) {
-          final data = doc.data();
-          if (data != null &&
-              data['nickname'] is String &&
-              (data['nickname'] as String).trim().isNotEmpty) {
-            name = data['nickname'] as String;
-          } else if (data != null &&
-              data['displayName'] is String &&
-              (data['displayName'] as String).trim().isNotEmpty) {
-            name = data['displayName'] as String;
-          } else {
-            name = '익명';
-          }
-        } else {
-          name = '익명';
-        }
-        _nicknameCache[authorId] = name;
-        if (mounted) {
-          setState(() {
-            _displayName = name;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _displayName = '알 수 없음';
-          });
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoadingName = false;
-          });
-        }
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final authorId = widget.review.authorId;
@@ -106,7 +33,11 @@ class _ReviewCardState extends State<ReviewCard> {
     final created = widget.review.createAt;
     final dateStr = DateFormat('yyyy.MM.dd').format(created);
 
-    final displayName = _displayName ?? '익명';
+    // authorNickname 활용: null 또는 빈 문자열이면 '익명'
+    String displayName = widget.review.authorNickname?.trim() ?? '';
+    if (displayName.isEmpty) {
+      displayName = '익명';
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -125,28 +56,22 @@ class _ReviewCardState extends State<ReviewCard> {
                 ),
               ),
               const SizedBox(width: 8),
-              if (_isLoadingName)
-                const Text(
-                  '로딩 중...',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                )
-              else
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                     ),
-                    Text(
-                      dateStr,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
+                  ),
+                  Text(
+                    dateStr,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
               const Spacer(),
               if (isOwnReview)
                 PopupMenuButton<String>(
@@ -167,7 +92,6 @@ class _ReviewCardState extends State<ReviewCard> {
             ],
           ),
           const SizedBox(height: 8),
-
           // 별점
           Row(
             children: List.generate(
@@ -180,7 +104,6 @@ class _ReviewCardState extends State<ReviewCard> {
             ),
           ),
           const SizedBox(height: 8),
-
           // 제목
           if (widget.review.title != null &&
               widget.review.title!.isNotEmpty) ...[
@@ -190,11 +113,9 @@ class _ReviewCardState extends State<ReviewCard> {
             ),
             const SizedBox(height: 4),
           ],
-
           // 내용
           Text(widget.review.content, style: const TextStyle(fontSize: 14)),
           const SizedBox(height: 8),
-
           // 해시태그
           if (widget.review.hashtags != null &&
               widget.review.hashtags!.isNotEmpty)
@@ -213,7 +134,6 @@ class _ReviewCardState extends State<ReviewCard> {
                       )
                       .toList(),
             ),
-
           const Divider(),
         ],
       ),

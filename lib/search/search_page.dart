@@ -1,14 +1,14 @@
 // lib/search/search_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:youthbuk/search/models/region.dart';
 import 'package:youthbuk/search/services/region_repository.dart';
-import 'package:youthbuk/search/village_detail_page%20.dart';
 import 'package:youthbuk/search/widgets/region_card.dart';
-import 'package:youthbuk/search/services/village_repository.dart';
-import 'package:youthbuk/search/models/village.dart';
-
-// 아래 import 경로는 실제 프로젝트 경로에 맞춰 조정하세요.
 import 'package:youthbuk/search/village_list_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:youthbuk/search/models/village.dart';
+import 'package:youthbuk/search/services/village_repository.dart';
+import 'package:youthbuk/search/village_detail_page%20.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -24,8 +24,8 @@ class _SearchPageState extends State<SearchPage> {
   late Future<List<RegionCount>> regionCountsFuture;
   final RegionRepository repo = RegionRepository();
 
-  // VillageRepository 인스턴스
-  final VillageRepository villageRepo = VillageRepository();
+  // Firestore 인스턴스 (추천 영역 실시간 반영용)
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -88,7 +88,7 @@ class _SearchPageState extends State<SearchPage> {
                           (_) => setState(() {
                             selectedTabIndex = i;
                             // 탭별 필터 로직이 필요하다면 이곳에서 상태를 변경하고,
-                            // regionCountsFuture나 추천 프로그램 Future 등을 다시 할당해 반영하세요.
+                            // regionCountsFuture나 추천 프로그램 필터 등을 다시 반영하세요.
                           }),
                     ),
                   ),
@@ -175,7 +175,7 @@ class _SearchPageState extends State<SearchPage> {
               },
             ),
 
-            // ====== 추천 프로그램 영역 ======
+            // ====== 추천 프로그램 영역 (StreamBuilder로 실시간 반영) ======
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -184,12 +184,16 @@ class _SearchPageState extends State<SearchPage> {
                   '추천 프로그램',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                // Text('정렬 ▶', style: TextStyle(color: Colors.blue)), // 필요시 정렬 UI 추가
               ],
             ),
             const SizedBox(height: 12),
-            FutureBuilder<List<Village>>(
-              future: villageRepo.fetchTopVillagesByRating(limit: 5),
+            StreamBuilder<QuerySnapshot>(
+              stream:
+                  _firestore
+                      .collection('Villages')
+                      .orderBy('rating', descending: true)
+                      .limit(5)
+                      .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -203,13 +207,23 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   );
                 }
-                final topVillages = snapshot.data;
-                if (topVillages == null || topVillages.isEmpty) {
+                final querySnap = snapshot.data;
+                if (querySnap == null || querySnap.docs.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Text('추천할 프로그램이 없습니다.'),
                   );
                 }
+                // 문서 리스트를 Village 모델 리스트로 변환
+                final topVillages =
+                    querySnap.docs.map((doc) {
+                      try {
+                        return Village.fromDoc(doc);
+                      } catch (_) {
+                        return Village.fromDoc(doc);
+                      }
+                    }).toList();
+
                 return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -217,9 +231,13 @@ class _SearchPageState extends State<SearchPage> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final v = topVillages[index];
+                    // 리뷰 개수 표시: 100 이상이면 '99+'
+                    final int count = v.reviewCount;
+                    final String displayCount =
+                        count >= 100 ? '99+' : count.toString();
+
                     return GestureDetector(
                       onTap: () {
-                        // 추천 프로그램 클릭 시 상세 페이지로 이동
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -238,7 +256,7 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                           child: Row(
                             children: [
-                              // (선택) 이미지가 있다면 왼쪽에 추가
+                              // 이미지가 있다면 왼쪽에 추가
                               if (v.photoUrls != null &&
                                   v.photoUrls!.isNotEmpty) ...[
                                 ClipRRect(
@@ -302,17 +320,14 @@ class _SearchPageState extends State<SearchPage> {
                                       ),
                                       const SizedBox(width: 2),
                                       Text(
-                                        v.averageRatingStored != null
-                                            ? v.averageRatingStored!
-                                                .toStringAsFixed(1)
-                                            : '0.0',
+                                        v.rating.toStringAsFixed(1),
                                         style: const TextStyle(fontSize: 14),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '(${v.reviewCountStored ?? 0})',
+                                    '($displayCount)',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey,
@@ -330,14 +345,12 @@ class _SearchPageState extends State<SearchPage> {
               },
             ),
 
-            // ========================================
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: () {
-                  // “더 많은 프로그램 보기” 동작: 예를 들어 평점순 전체 페이지로 이동 등
-                  // Navigator.push(...);
+                  // “더 많은 프로그램 보기” 동작: 예: 평점순 전체 페이지로 이동 등
                 },
                 child: const Text('더 많은 프로그램 보기'),
               ),

@@ -23,6 +23,8 @@ class _ReviewWritePageState extends State<ReviewWritePage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   final TextEditingController _contentController = TextEditingController();
+
+  // 해시태그 입력 컨트롤러
   final TextEditingController _tagController = TextEditingController();
 
   int _star = 0;
@@ -146,8 +148,7 @@ class _ReviewWritePageState extends State<ReviewWritePage> {
           hashtags: hashtags,
         );
       } else {
-        // 새 작성 모드: 중복 허용 방식 등 원하는 저장 메서드 사용
-        // 예: saveReviewAllowDuplicates
+        // 새 작성 모드: ReviewService.saveReviewAllowDuplicates 내부에서 authorNickname을 채워서 저장
         await reviewService.saveReviewAllowDuplicates(
           villageName: widget.villageName,
           content: content,

@@ -1,25 +1,27 @@
 // lib/search/models/village.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-// 만약 Google Maps Flutter 플러그인 등을 쓸 경우 LatLng 타입을 import
-// import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class Village {
   final String id;
   final String name; // 체험마을명
-  final String categoryRaw; // 체험프로그램구분 원문
-  final List<String> categories; // categoryRaw.split('+')
-  final String programsRaw; // 체험프로그램명 원문
-  final List<String> programNames; // programsRaw.split('+')
-  final double? averageRatingStored; // 문서에 미리 저장된 평균 평점
-  final int? reviewCountStored; // 문서에 미리 저장된 리뷰 개수
-  final double? latitude; // 위도
-  final double? longitude; // 경도
-  final String? address; // 소재지도로명주소
-  final String? phone; // 대표전화번호
-  final String? managerName; // 관리기관명
-  final String? homepage; // 홈페이지주소
-  final DateTime? syncedAt; // syncedAt 필드
-  final List<String>? photoUrls; // 체험휴양마을사진 URL 리스트
+  final String categoryRaw;
+  final List<String> categories;
+  final String programsRaw;
+  final List<String> programNames;
+  final double? averageRatingStored;
+  final int? reviewCountStored;
+  final double? latitude;
+  final double? longitude;
+  final String? address;
+  final String? phone;
+  final String? managerName;
+  final String? homepage;
+  final DateTime? syncedAt;
+  final List<String>? photoUrls;
+
+  // 시군구명 필드 추가 (nullable)
+  final String? cityName;
 
   Village({
     required this.id,
@@ -38,13 +40,16 @@ class Village {
     this.homepage,
     this.syncedAt,
     this.photoUrls,
+    this.cityName,
   });
 
   factory Village.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
 
-    // 1. 기본 텍스트 필드들
+    // 1) 체험마을명
     final String name = data['체험마을명'] as String? ?? '';
+
+    // 2) 카테고리Raw
     final String categoryRaw = data['체험프로그램구분'] as String? ?? '';
     final List<String> categories =
         categoryRaw.isNotEmpty
@@ -54,6 +59,8 @@ class Village {
                 .where((s) => s.isNotEmpty)
                 .toList()
             : [];
+
+    // 3) 프로그램Raw
     final String programsRaw = data['체험프로그램명'] as String? ?? '';
     final List<String> programNames =
         programsRaw.isNotEmpty
@@ -64,7 +71,7 @@ class Village {
                 .toList()
             : [];
 
-    // 2. 평점/리뷰 개수 (optional)
+    // 4) 평점, 리뷰개수
     double? avgStored;
     if (data.containsKey('rating')) {
       final v = data['rating'];
@@ -73,10 +80,13 @@ class Village {
     int? countStored;
     if (data.containsKey('reviewCount')) {
       final v = data['reviewCount'];
-      if (v is int) countStored = v;
+      if (v is int)
+        countStored = v;
+      else if (v is num)
+        countStored = v.toInt();
     }
 
-    // 3. 위치: GeoPoint 또는 개별 위도/경도 필드
+    // 5) 위치 GeoPoint 또는 개별 위도/경도
     double? lat, lng;
     if (data['location'] is GeoPoint) {
       final gp = data['location'] as GeoPoint;
@@ -93,7 +103,7 @@ class Village {
       }
     }
 
-    // 4. 기타 정보
+    // 6) 기타 정보
     String? address = data['소재지도로명주소'] as String?;
     String? phone = data['대표전화번호'] as String?;
     String? managerName = data['관리기관명'] as String?;
@@ -104,7 +114,6 @@ class Village {
       syncedAt = (data['syncedAt'] as Timestamp).toDate();
     }
 
-    // 5. 사진: '체험휴양마을사진' 필드.
     List<String>? photoUrls;
     if (data.containsKey('체험휴양마을사진')) {
       final raw = data['체험휴양마을사진'];
@@ -119,6 +128,16 @@ class Village {
           photoUrls = [raw.trim()];
         }
       }
+    }
+
+    // 7) 시군구명 (cityName) 안전하게 읽기
+    String? cityName;
+    if (data.containsKey('시군구명')) {
+      final v = data['시군구명'];
+      if (v is String) {
+        cityName = v.trim();
+      }
+      // 만약 null 혹은 비문자열이면 cityName은 null 유지
     }
 
     return Village(
@@ -138,22 +157,14 @@ class Village {
       homepage: homepage,
       syncedAt: syncedAt,
       photoUrls: photoUrls,
+      cityName: cityName,
     );
   }
 
-  // --- 이하 유틸리티 메서드/Getter 추가 예시 ---
+  // --- Getter alias 등 ---
+  double get rating => averageRatingStored ?? 0.0;
+  int get reviewCount => reviewCountStored ?? 0;
 
-  /// 만약 Google Maps Flutter의 LatLng 타입을 쓰고 싶다면:
-  /*
-  LatLng? get latLng {
-    if (latitude != null && longitude != null) {
-      return LatLng(latitude!, longitude!);
-    }
-    return null;
-  }
-  */
-
-  /// GeoPoint로 저장하거나 업데이트할 때 사용할 수 있는 Getter
   GeoPoint? get geoPoint {
     if (latitude != null && longitude != null) {
       return GeoPoint(latitude!, longitude!);
@@ -161,10 +172,8 @@ class Village {
     return null;
   }
 
-  /// 프로그램 목록이 비어있지 않다면 Chip 등에 바로 이용
   bool get hasPrograms => programNames.isNotEmpty;
 
-  /// 사진이 있을 경우 첫 번째 대표 이미지 URL
   String? get thumbnailUrl {
     if (photoUrls != null && photoUrls!.isNotEmpty) {
       return photoUrls!.first;
@@ -172,13 +181,11 @@ class Village {
     return null;
   }
 
-  /// toMap: 문서 쓰기/업데이트용으로 변환 (필요 시)
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       '체험마을명': name,
       '체험프로그램구분': categoryRaw,
       '체험프로그램명': programsRaw,
-      // 위치는 geoPoint가 있을 때만:
       if (geoPoint != null) 'location': geoPoint,
       if (address != null) '소재지도로명주소': address,
       if (phone != null) '대표전화번호': phone,
@@ -186,7 +193,8 @@ class Village {
       if (homepage != null) '홈페이지주소': homepage,
       if (photoUrls != null) '체험휴양마을사진': photoUrls,
       if (syncedAt != null) 'syncedAt': Timestamp.fromDate(syncedAt!),
-      // rating, reviewCount 등 aggregate 필드는 별도 로직에서 업데이트
+      // rating, reviewCount는 Cloud Function 또는 클라이언트 로직으로 관리
+      if (cityName != null) '시군구명': cityName,
     };
     return map;
   }

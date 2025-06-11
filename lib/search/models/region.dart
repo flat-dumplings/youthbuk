@@ -1,4 +1,4 @@
-// lib/search/models/region_count.dart
+// lib/search/models/region.dart
 class RegionCount {
   final String name;
   final int count;

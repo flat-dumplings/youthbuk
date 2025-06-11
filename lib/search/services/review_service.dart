@@ -63,13 +63,18 @@ class ReviewService {
       );
     }
     final uid = user.uid;
+
+    // 현재 사용자의 닉네임을 가져옴: users 컬렉션의 nickname 우선, 없으면 FirebaseAuth displayName 사용
+    final nickname = await _getCurrentUserNickname(uid);
+    final authorNickname = nickname.isNotEmpty ? nickname : '익명';
+
     final collectionRef = _firestore.collection('villages_review');
     final serverNow = FieldValue.serverTimestamp();
 
+    // 문서 ID: uid 또는 uid_suffix 형태로 중복 허용
     String docIdBase = uid;
     String newDocId = docIdBase;
     int suffix = 0;
-
     while (true) {
       final docRef = collectionRef.doc(newDocId);
       final docSnap = await docRef.get();
@@ -78,9 +83,11 @@ class ReviewService {
       newDocId = '${docIdBase}_$suffix';
     }
 
+    // 데이터 맵 구성: authorId, authorNickname 포함
     final docRef = collectionRef.doc(newDocId);
     final dataMap = <String, dynamic>{
       'authorId': uid,
+      'authorNickname': authorNickname,
       '체험마을명': villageName,
       'content': content,
       'star': star,
@@ -95,6 +102,8 @@ class ReviewService {
     }
 
     await docRef.set(dataMap);
+
+    // Villages 집계 업데이트: 가능하면 Cloud Function으로 이전 권장
     await updateVillageRating(villageName);
   }
 
@@ -107,18 +116,24 @@ class ReviewService {
         message: '로그인이 필요합니다.',
       );
     }
+    final uid = user.uid;
+
     final docRef = _firestore.collection('villages_review').doc(docId);
     final docSnap = await docRef.get();
     if (!docSnap.exists) {
       throw FirebaseException(plugin: 'Firestore', message: '리뷰가 존재하지 않습니다.');
     }
     final data = docSnap.data();
-    if (data == null || data['authorId'] != user.uid) {
+    if (data == null || data['authorId'] != uid) {
       throw FirebaseException(plugin: 'Firestore', message: '삭제 권한이 없습니다.');
     }
-    final villageName = data['체험마을명'];
+
+    final villageName = data['체험마을명'] as String? ?? '';
     await docRef.delete();
-    await updateVillageRating(villageName);
+
+    if (villageName.isNotEmpty) {
+      await updateVillageRating(villageName);
+    }
   }
 
   /// 리뷰 수정
@@ -137,23 +152,28 @@ class ReviewService {
         message: '로그인이 필요합니다.',
       );
     }
+    final uid = user.uid;
+
     final docRef = _firestore.collection('villages_review').doc(docId);
     final docSnap = await docRef.get();
     if (!docSnap.exists) {
       throw FirebaseException(plugin: 'Firestore', message: '리뷰가 존재하지 않습니다.');
     }
     final dataExisting = docSnap.data();
-    if (dataExisting == null || dataExisting['authorId'] != user.uid) {
+    if (dataExisting == null || dataExisting['authorId'] != uid) {
       throw FirebaseException(plugin: 'Firestore', message: '수정 권한이 없습니다.');
     }
 
+    // 기존 create_at, authorNickname, 체험마을명 보존
     final createAtValue = dataExisting['create_at'];
+    final originalVillageName = dataExisting['체험마을명'] as String? ?? villageName;
+
     final serverNow = FieldValue.serverTimestamp();
+
     final updateMap = <String, dynamic>{
       'content': content,
       'star': star,
       'update_at': serverNow,
-      '체험마을명': villageName,
       'create_at': createAtValue,
     };
     if (title != null && title.trim().isNotEmpty) {
@@ -167,7 +187,10 @@ class ReviewService {
     }
 
     await docRef.update(updateMap);
-    await updateVillageRating(villageName);
+
+    if (originalVillageName.isNotEmpty) {
+      await updateVillageRating(originalVillageName);
+    }
   }
 
   /// 마을 평점/리뷰 수 갱신
@@ -202,5 +225,34 @@ class ReviewService {
       'reviewCount': reviewCount,
       'rating': average,
     });
+  }
+
+  /// 현재 사용자의 nickname 가져오기:
+  /// Firestore users/{uid}.nickname 우선, 없으면 FirebaseAuth displayName 사용
+  Future<String> _getCurrentUserNickname(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data();
+        final nick = data?['nickname'] as String?;
+        if (nick != null && nick.trim().isNotEmpty) {
+          return nick.trim();
+        }
+        final dispField = data?['displayName'] as String?;
+        if (dispField != null && dispField.trim().isNotEmpty) {
+          return dispField.trim();
+        }
+      }
+    } catch (_) {
+      // Firestore 조회 실패 시 폴백
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName;
+    if (displayName != null && displayName.trim().isNotEmpty) {
+      return displayName.trim();
+    }
+
+    return '';
   }
 }
