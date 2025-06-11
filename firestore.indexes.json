@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "villages_review",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "`체험마을명`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "create_at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,6 +1,11 @@
 {
   "name": "functions",
+  "version": "1.0.0",
   "description": "Cloud Functions for Firebase",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
   "scripts": {
     "lint": "eslint .",
     "serve": "firebase emulators:start --only functions",
@@ -9,10 +14,6 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
-  "engines": {
-    "node": "20"
-  },
-  "main": "index.js",
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
     "firebase-admin": "^13.4.0",

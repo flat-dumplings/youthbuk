@@ -48,3 +48,6 @@ app.*.map.json
 # custom 
 google-services.json
 GoogleService-Info.plist
+
+.env
+.env.default

@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // users, Villages, villages_review 등 기존 규칙...
+    match /users/{userId} {
+      allow read, create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+      match /likes/{categoryId} {
+        allow read, create, update, delete:
+          if request.auth != null && request.auth.uid == userId;
+        match /villages/{villageId} {
+          allow read, create, delete:
+            if request.auth != null && request.auth.uid == userId;
+          allow update: if false;
+        }
+      }
+    }
+
+    match /Villages/{villageId} {
+      allow read: if true;
+      allow create, update, delete: if false; // Admin SDK만 쓰기 가능
+    }
+
+    match /villages_review/{reviewId} {
+      allow read: if true;
+      allow create:
+        if request.auth != null
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+             'authorId',
+             'authorNickname',
+             '체험마을명',
+             'content',
+             'star'
+           ])
+        && request.resource.data.authorNickname is string
+        && request.resource.data['체험마을명'] is string
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.star is number
+        && request.resource.data.star >= 0
+        && request.resource.data.star <= 5;
+      allow update:
+        if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+      allow delete:
+        if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    // festivals 컬렉션: 읽기만 허용, 쓰기 차단
+    match /festivals/{festivalId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    // 기타 컬렉션...
+  }
+}
