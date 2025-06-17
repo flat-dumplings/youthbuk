@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // ✅ dotenv import
 import 'firebase_options.dart';
 
 // 페이지 임포트
+import 'package:youthbuk/community/pages/poster_input_page.dart';
 import 'package:youthbuk/home/home_page.dart';
 import 'package:youthbuk/search/search_page.dart';
 import 'package:youthbuk/reservation/reservation_page.dart';
-import 'package:youthbuk/community/community_page.dart';
 import 'package:youthbuk/mypage/mypage_page.dart';
 import 'package:youthbuk/member/login_page.dart';
 import 'package:youthbuk/member/signup_page.dart';
@@ -17,6 +17,7 @@ import 'package:youthbuk/member/profile_signup_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseAuth.instance.setLanguageCode('ko');
   runApp(const MyApp());
@@ -79,7 +80,7 @@ class _MainPageState extends State<MainPage> {
     HomePage(),
     SearchPage(),
     ReservationPage(),
-    CommunityPage(),
+    PosterInputPage(),
     MyPage(),
   ];
 
@@ -92,9 +93,7 @@ class _MainPageState extends State<MainPage> {
         currentIndex: _currentIndex,
         onTap: (idx) {
           if (idx == _currentIndex) return;
-          setState(() {
-            _currentIndex = idx;
-          });
+          setState(() => _currentIndex = idx);
         },
         items: const [
           BottomNavigationBarItem(

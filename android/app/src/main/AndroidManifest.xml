@@ -1,50 +1,44 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 기존 <queries>나 <application> 등의 내용은 그대로 두되, 최상단의 package 속성은 제거 -->
-    
-    <!-- 예시: queries 섹션이 필요하다면 이미 추가한 것을 유지 -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.DIAL" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="http" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="https" />
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="geo" />
-        </intent>
-        <!-- 기타 queries -->
-    </queries>
+  <!-- ✅ Android 13 이상 -->
+  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
-    <application
-        android:label="youthbuk"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
-            android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
-            <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-            />
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
-        <meta-data
-            android:name="flutterEmbedding"
-            android:value="2" />
-    </application>
+  <!-- ✅ Android 13 이하 호환 -->
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+    android:maxSdkVersion="32" />
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    android:maxSdkVersion="28" />
+
+  <!-- ✅ 공통 권한 -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.CAMERA" />
+  
+
+  <application
+    android:name="${applicationName}"
+    android:label="youthbuk"
+    android:icon="@mipmap/ic_launcher"
+    android:requestLegacyExternalStorage="true"> <!-- ✅ Android 10 대응 -->
+
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:launchMode="singleTop"
+      android:theme="@style/LaunchTheme"
+      android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout|density|uiMode"
+      android:hardwareAccelerated="true"
+      android:windowSoftInputMode="adjustResize">
+
+      <meta-data
+        android:name="io.flutter.embedding.android.NormalTheme"
+        android:resource="@style/NormalTheme" />
+
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+
+    <meta-data android:name="flutterEmbedding" android:value="2" />
+  </application>
 </manifest>
