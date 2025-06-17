@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:async';
 
 import 'package:youthbuk/home/widgets/Image_category.dart';
 import 'package:youthbuk/home/widgets/banner_widget.dart';
 import 'package:youthbuk/home/widgets/deadline_section.dart';
-import 'package:youthbuk/home/widgets/section_divider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,50 +14,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-
-  final List<Map<String, String>> _banners = [
-    {
-      'title': '장박 용품 최저가 보장!',
-      'subtitle': '11/14까지 80% 할인!',
-      'image': 'assets/images/login_logo.png',
-    },
-    {
-      'title': '따뜻한 캠핑을 위한 히터 특가',
-      'subtitle': '지금 바로 확인해보세요!',
-      'image': 'assets/images/login_logo.png',
-    },
-    {
-      'title': '겨울 침낭 할인 이벤트',
-      'subtitle': '최대 70% 세일',
-      'image': 'assets/images/login_logo.png',
-    },
-    {
-      'title': '차박 필수템 모음전',
-      'subtitle': '이불부터 버너까지 한 번에!',
-      'image': 'assets/images/login_logo.png',
-    },
-    {
-      'title': '텐트 세트 구성 할인',
-      'subtitle': '캠핑 초보도 완벽 준비!',
-      'image': 'assets/images/login_logo.png',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
-    Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (_pageController.hasClients) {
-        _currentPage = (_currentPage + 1) % _banners.length;
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
   }
 
   @override
@@ -73,31 +32,38 @@ class _HomePageState extends State<HomePage> {
           children: [
             Row(
               children: [
-                Image.asset('assets/images/logo_3d.png', width: 30, height: 30),
-                const SizedBox(width: 6),
-                const Text(
+                Image.asset(
+                  'assets/images/logo_3d.png',
+                  width: 30.w,
+                  height: 30.h,
+                ),
+                SizedBox(width: 6.w),
+                Text(
                   '청춘북',
                   style: TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: 20.sp,
                   ),
                 ),
               ],
             ),
-            ElevatedButton.icon(
+            OutlinedButton.icon(
               onPressed: () {},
-              icon: const Icon(Icons.search, size: 18),
-              label: const Text('예약조회', style: TextStyle(fontSize: 12)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[200],
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+              label: Text(
+                '🛒 장바구니',
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
                 ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.grey.shade300),
+                backgroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20.r),
                 ),
               ),
             ),
@@ -108,13 +74,13 @@ class _HomePageState extends State<HomePage> {
         children: [
           // 캐릭터 이미지
           Positioned(
-            top: 70,
+            top: 70.h,
             left: 0,
             right: 0,
             child: Center(
               child: Image.asset(
                 'assets/images/main_half.png',
-                height: 120,
+                height: 120.h,
                 fit: BoxFit.contain,
               ),
             ),
@@ -122,15 +88,15 @@ class _HomePageState extends State<HomePage> {
 
           // 검색창
           Positioned(
-            top: 180,
-            left: 16,
-            right: 16,
+            top: 180.h,
+            left: 16.w,
+            right: 16.w,
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: 12.w),
               child: const TextField(
                 decoration: InputDecoration(
                   icon: Icon(Icons.search),
@@ -143,87 +109,29 @@ class _HomePageState extends State<HomePage> {
 
           // 전체 콘텐츠
           Positioned.fill(
-            top: 240,
+            top: 240.h,
             child: ListView(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
               children: [
                 // Carousel Banner
-                SizedBox(
-                  height: 140,
-                  child: PageView.builder(
-                    controller: _pageController,
-                    itemCount: _banners.length,
-                    itemBuilder: (context, index) {
-                      final banner = _banners[index];
-                      return Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9F5F1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    banner['title']!,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    banner['subtitle']!,
-                                    style: const TextStyle(
-                                      color: Colors.redAccent,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(
-                                banner['image']!,
-                                width: 80,
-                                height: 80,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    onPageChanged:
-                        (index) => setState(() => _currentPage = index),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_banners.length, (index) {
-                    return Container(
-                      width: 6,
-                      height: 6,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color:
-                            _currentPage == index ? Colors.black : Colors.grey,
-                      ),
-                    );
-                  }),
+                BannerWidget(
+                  imagePaths: [
+                    'assets/images/banner/001.png',
+                    'assets/images/banner/002.png',
+                    'assets/images/banner/003.png',
+                    'assets/images/banner/004.png',
+                    'assets/images/banner/005.png',
+                  ],
+                  onTap: (index) {
+                    print('배너 $index 클릭됨');
+                    // 원하는 동작 처리
+                  },
                 ),
                 //const SizedBox(height: 20),
 
                 // Category Icons
                 GridView.count(
-                  padding: const EdgeInsets.only(top: 20),
+                  padding: EdgeInsets.only(top: 20.h),
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisCount: 5,
@@ -273,21 +181,12 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: 28.h),
                 //const SectionDivider(),
-                BannerWidget(
-                  title: '헬퍼 청년',
-                  subtitle: '마을 일손 도와주고, 무료 숙식 지원받기!',
-                  buttonText: '신청하기',
-                  onPressed: () {
-                    // 버튼 클릭 시 동작
-                  },
-                  imagePath: 'assets/images/login_logo.png', // 이미지 경로
-                ),
                 // 마감 임박 상품
-                const SizedBox(height: 28),
                 const DeadlineSection(),
-                const SizedBox(height: 28),
+
+                SizedBox(height: 28.h),
               ],
             ),
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:youthbuk/home/widgets/title_header.dart';
 
 class DeadlineSection extends StatelessWidget {
@@ -8,63 +9,57 @@ class DeadlineSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> dummyData = [
       {
-        'title': '(잠실)잠실원샷 4층 3루',
-        'company': '라지칠리새우(4층)',
-        'price': '23,500원',
+        'title': '딸기 따기 체험',
+        'company': '충주 효마을',
         'imagePath': 'assets/images/login_logo.png',
         'deadline': DateTime.now(),
         'region': '충주',
       },
       {
-        'title': '(잠실)잠실원샷 4층 3루',
-        'company': '라지어니언텅지치킨(4층)',
-        'price': '19,000원',
+        'title': '목공예 체험',
+        'company': '제천 도화리마을',
         'imagePath': 'assets/images/login_logo.png',
-        'deadline': DateTime.now().add(Duration(days: 1)),
+        'deadline': DateTime.now().add(const Duration(days: 1)),
         'region': '제천',
       },
       {
-        'title': '(미스터피자)광장점',
-        'company': '포테이토골드킹',
-        'price': '39,500원',
+        'title': '빵 만들기 체험',
+        'company': '단양 샘양지마을',
         'imagePath': 'assets/images/login_logo.png',
-        'deadline': DateTime.now().add(Duration(days: 100)),
-        'region': '청주',
+        'deadline': DateTime.now().add(const Duration(days: 100)),
+        'region': '단양',
       },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const TitleHeader(title: '마감 임박 체험 🔥', subTitle: '마감 임박한 체험 입니다!'),
-        const SizedBox(height: 5),
+        const TitleHeader(title: '마감 임박 체험 🔥', subTitle: '마감 전 빠르게 신청하세요!'),
+        SizedBox(height: 10.h),
         SizedBox(
-          height: 260,
+          height: 220.h,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
             itemCount: dummyData.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 18),
+            separatorBuilder: (_, __) => SizedBox(width: 18.w),
             itemBuilder: (context, index) {
               final data = dummyData[index];
-              // deadline: DateTime 타입이라 가정
               final DateTime deadline = data['deadline'] as DateTime;
               final DateTime today = DateTime.now();
 
-              // 날짜만 비교하기 위해 시간 제외
-              final DateTime todayDateOnly = DateTime(
+              final DateTime todayOnly = DateTime(
                 today.year,
                 today.month,
                 today.day,
               );
-              final DateTime deadlineDateOnly = DateTime(
+              final DateTime deadlineOnly = DateTime(
                 deadline.year,
                 deadline.month,
                 deadline.day,
               );
 
-              final difference =
-                  deadlineDateOnly.difference(todayDateOnly).inDays;
+              final difference = deadlineOnly.difference(todayOnly).inDays;
 
               String deadlineText;
               if (difference > 0) {
@@ -74,143 +69,149 @@ class DeadlineSection extends StatelessWidget {
               } else {
                 deadlineText = '마감';
               }
+
               return Container(
-                width: 220,
+                width: 180.w,
                 decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16.r),
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black12.withOpacity(0.05),
+                      color: Colors.black12.withOpacity(0.06),
                       blurRadius: 12,
-                      offset: const Offset(0, 6),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(16),
-                          ),
-                          child: Image.asset(
+                    ClipRRect(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(16.r),
+                      ),
+                      child: Stack(
+                        children: [
+                          Image.asset(
                             data['imagePath']!,
                             width: double.infinity,
-                            height: 140,
+                            height: 150.h,
                             fit: BoxFit.cover,
                           ),
-                        ),
-                        Positioned(
-                          top: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.redAccent.withOpacity(0.7),
-                                  blurRadius: 2,
-                                  offset: const Offset(0, 3),
+                          Positioned.fill(
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    Color.fromARGB(120, 0, 0, 0),
+                                    Colors.transparent,
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Text(
-                              deadlineText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black26,
-                                    offset: Offset(0, 1),
-                                    blurRadius: 3,
+                          ),
+                          Positioned(
+                            top: 10.h,
+                            right: 10.w,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8.w,
+                                vertical: 4.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.deepOrangeAccent,
+                                borderRadius: BorderRadius.circular(16.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.deepOrangeAccent.withOpacity(
+                                      0.5,
+                                    ),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                deadlineText,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 8.h,
+                            left: 10.w,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6.w,
+                                vertical: 3.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 12.sp,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    data['region']!,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 11.sp,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                        ),
-                        Positioned(
-                          bottom: 8,
-                          left: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black87,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min, // 크기 텍스트와 아이콘만큼만
-                              children: [
-                                const Icon(
-                                  Icons.location_on, // 위치 아이콘
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 4), // 아이콘과 텍스트 간격
-                                Text(
-                                  data['region']!,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            data['price']!,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                              color: Color(0xFF222222),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '1.2억',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            data['title']!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Color(0xFF222222),
-                            ),
-                          ),
                         ],
+                      ),
+                    ),
+                    SizedBox(
+                      height: 60.h,
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 6.h),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              data['company']!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.grey.shade500,
+                                fontWeight: FontWeight.w500,
+                                height: 1.2,
+                              ),
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              data['title']!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.sp,
+                                color: Colors.black,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

@@ -45,4 +45,5 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/icons/3d/
+    - assets/images/banner/
     - .env
