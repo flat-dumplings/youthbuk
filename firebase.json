@@ -29,7 +29,8 @@
       "firebase-debug.log",
       "firebase-debug.*.log",
       "*.local"
-    ]
+    ],
+    "memory": "512MB"
   },
   "firestore": {
     "database": "(default)",

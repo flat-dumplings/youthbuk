@@ -41,7 +41,7 @@ async function uploadToStorage(buffer, fileName) {
 }
 
 exports.createPoster = functions.https.onRequest(async (req, res) => {
-  console.log('OPENAI_KEY:', OPENAI_API_KEY ? 'Loaded' : 'Not Found');  // 키 로드 확인용
+  console.log('OPENAI_KEY:', OPENAI_API_KEY ? 'Loaded' : 'Not Found');
 
   try {
     if (req.method !== 'POST') {
@@ -68,17 +68,25 @@ exports.createPoster = functions.https.onRequest(async (req, res) => {
     const templateName = templateFileName || 'template_bg.png';
     const templatePath = path.join(__dirname, 'templates', templateName);
 
-    // 이미지 합성 후 버퍼 얻기
-    const posterBuffer = await sharp(templatePath)
-      .composite([{ input: aiImageBuffer, top: 200, left: 50 }])
-      .png()
-      .toBuffer();
+    console.log('Using template image path:', templatePath);
+
+    // sharp 이미지 합성 및 에러 처리
+    let posterBuffer;
+    try {
+      posterBuffer = await sharp(templatePath)
+        .composite([{ input: aiImageBuffer, top: 200, left: 50 }])
+        .png()
+        .toBuffer();
+    } catch (sharpError) {
+      console.error('Sharp processing error:', sharpError);
+      res.status(500).send('Image processing failed');
+      return;
+    }
 
     // Firebase Storage에 업로드
     const fileName = `poster_${Date.now()}.png`;
     const posterUrl = await uploadToStorage(posterBuffer, fileName);
 
-    // 결과 응답
     res.json({
       posterUrl,
       generatedTitle: title,
