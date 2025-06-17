@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:youthbuk/home/widgets/Image_category.dart';
+import 'package:youthbuk/home/widgets/banner_widget.dart';
+import 'package:youthbuk/home/widgets/deadline_section.dart';
+import 'package:youthbuk/home/widgets/section_divider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -8,355 +14,283 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String selectedPreference = '여행';
-  double distance = 5;
-  RangeValues dateRange = const RangeValues(1, 30);
-  final List<String> preferences = ['여행', '캠핑', '등산', '체험'];
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  final List<Map<String, String>> _banners = [
+    {
+      'title': '장박 용품 최저가 보장!',
+      'subtitle': '11/14까지 80% 할인!',
+      'image': 'assets/images/login_logo.png',
+    },
+    {
+      'title': '따뜻한 캠핑을 위한 히터 특가',
+      'subtitle': '지금 바로 확인해보세요!',
+      'image': 'assets/images/login_logo.png',
+    },
+    {
+      'title': '겨울 침낭 할인 이벤트',
+      'subtitle': '최대 70% 세일',
+      'image': 'assets/images/login_logo.png',
+    },
+    {
+      'title': '차박 필수템 모음전',
+      'subtitle': '이불부터 버너까지 한 번에!',
+      'image': 'assets/images/login_logo.png',
+    },
+    {
+      'title': '텐트 세트 구성 할인',
+      'subtitle': '캠핑 초보도 완벽 준비!',
+      'image': 'assets/images/login_logo.png',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (_pageController.hasClients) {
+        _currentPage = (_currentPage + 1) % _banners.length;
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('청년아, 충북으로 와!'),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Banner with responsive aspect ratio
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.asset(
-                  'assets/banner.jpg',
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (c, e, s) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // AI 추천 필터
-            const Text(
-              'AI 맞춤 체험 추천',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children:
-                  preferences.map((pref) {
-                    final isSelected = pref == selectedPreference;
-                    return ChoiceChip(
-                      label: Text(pref),
-                      selected: isSelected,
-                      onSelected:
-                          (_) => setState(() => selectedPreference = pref),
-                    );
-                  }).toList(),
-            ),
-            const SizedBox(height: 16),
-
-            // Distance Slider
-            const Text('활동 거리 (km)'),
-            Slider(
-              min: 1,
-              max: 50,
-              divisions: 49,
-              value: distance,
-              label: '${distance.round()}km',
-              onChanged: (v) => setState(() => distance = v),
-            ),
-            const SizedBox(height: 8),
-
-            // Date Range Slider
-            const Text('여행 기간 (일)'),
-            RangeSlider(
-              min: 1,
-              max: 30,
-              divisions: 29,
-              values: dateRange,
-              labels: RangeLabels(
-                '${dateRange.start.round()}일',
-                '${dateRange.end.round()}일',
-              ),
-              onChanged: (r) => setState(() => dateRange = r),
-            ),
-            const SizedBox(height: 16),
-
-            // Search Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                child: const Text('나에게 맞는 체험 찾기'),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Popular Programs
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  '인기 체험 프로그램',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text('전체 보기', style: TextStyle(color: Colors.blue)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 3 / 4,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: 4,
-              itemBuilder:
-                  (context, i) => _ProgramCard(
-                    title: '프로그램 ${i + 1}',
-                    location: '보은군',
-                    price: '${(i + 1) * 2}만원',
+              children: [
+                Image.asset('assets/images/logo_3d.png', width: 30, height: 30),
+                const SizedBox(width: 6),
+                const Text(
+                  '청춘북',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
-            ),
-            const SizedBox(height: 24),
-
-            // Support Info
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  '정착 지원 정보',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                Text('더보기', style: TextStyle(color: Colors.blue)),
               ],
             ),
-            const SizedBox(height: 12),
-            GridView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.search, size: 18),
+              label: const Text('예약조회', style: TextStyle(fontSize: 12)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey[200],
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
-              children: const [
-                _SupportCard(
-                  icon: Icons.home,
-                  title: '공공 빈집',
-                  subtitle: '리모델링 지원 주택 정보',
-                ),
-                _SupportCard(
-                  icon: Icons.work,
-                  title: '지역 일자리',
-                  subtitle: '취업 및 창업 정보',
-                ),
-                _SupportCard(
-                  icon: Icons.info,
-                  title: '지원금 안내',
-                  subtitle: '청년 정착 지원 혜택',
-                ),
-                _SupportCard(
-                  icon: Icons.calculate,
-                  title: '생활비 계산기',
-                  subtitle: '지역별 생활 비용 비교',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Reviews & Community
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  '체험 후기 & 커뮤니티',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text('글쓰기', style: TextStyle(color: Colors.blue)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const _ReviewTile(
-              name: '김지연',
-              time: '한 달 전',
-              rating: 5,
-              title: '괴산에서 찾은 새로운 시작',
-              content:
-                  '한 달 살이로 시작했는데 이제는 정착을 준비하고 있어요. 지역 주민들의 따뜻한 환대와 아름다운 자연환경에 반해 귀농을 결심했습니다.',
-              tags: ['#괴산', '#한 달 살이', '#귀농'],
-            ),
-            const Divider(),
-            const _ReviewTile(
-              name: '박민수',
-              time: '2주 전',
-              rating: 5,
-              title: '충주에서의 창업 멘토링, 대만족!',
-              content:
-                  '일주일 창업 체험 프로그램에 참여했는데, 로컬 비즈니스에 대한 인사이트를 많이 얻었습니다. 멘토링이 특히 도움이 되었어요.',
-              tags: ['#충주', '#창업', '#멘토링'],
             ),
           ],
         ),
       ),
-
-      // Removed nested bottomNavigationBar; navigation handled by RootPage
-    );
-  }
-}
-
-// Program Card
-class _ProgramCard extends StatelessWidget {
-  final String title, location, price;
-  const _ProgramCard({
-    super.key,
-    required this.title,
-    required this.location,
-    required this.price,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            child: AspectRatio(
-              aspectRatio: 16 / 9,
+          // 캐릭터 이미지
+          Positioned(
+            top: 70,
+            left: 0,
+            right: 0,
+            child: Center(
               child: Image.asset(
-                'assets/program.jpg',
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => const SizedBox.shrink(),
+                'assets/images/main_half.png',
+                height: 120,
+                fit: BoxFit.contain,
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+
+          // 검색창
+          Positioned(
+            top: 180,
+            left: 16,
+            right: 16,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: const TextField(
+                decoration: InputDecoration(
+                  icon: Icon(Icons.search),
+                  hintText: '원하는 상품이나 체험을 검색하세요',
+                  border: InputBorder.none,
                 ),
-                const SizedBox(height: 4),
-                Text(location),
-                const SizedBox(height: 4),
-                Text(price, style: const TextStyle(color: Colors.blue)),
+              ),
+            ),
+          ),
+
+          // 전체 콘텐츠
+          Positioned.fill(
+            top: 240,
+            child: ListView(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              children: [
+                // Carousel Banner
+                SizedBox(
+                  height: 140,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: _banners.length,
+                    itemBuilder: (context, index) {
+                      final banner = _banners[index];
+                      return Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9F5F1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    banner['title']!,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    banner['subtitle']!,
+                                    style: const TextStyle(
+                                      color: Colors.redAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.asset(
+                                banner['image']!,
+                                width: 80,
+                                height: 80,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    onPageChanged:
+                        (index) => setState(() => _currentPage = index),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_banners.length, (index) {
+                    return Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color:
+                            _currentPage == index ? Colors.black : Colors.grey,
+                      ),
+                    );
+                  }),
+                ),
+                //const SizedBox(height: 20),
+
+                // Category Icons
+                GridView.count(
+                  padding: const EdgeInsets.only(top: 20),
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 5,
+                  childAspectRatio: 0.7,
+                  mainAxisSpacing: 14,
+                  crossAxisSpacing: 14,
+                  children: const [
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/all.png',
+                      label: '전체',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/rural_activities.png',
+                      label: '농촌활동',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/experience.png',
+                      label: '체험',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/sightseeing.png',
+                      label: '관광',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/health.png',
+                      label: '건강',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/craft.png',
+                      label: '공예',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/cooking.png',
+                      label: '요리',
+                    ),
+                    ImageCategory(
+                      imagePath:
+                          'assets/images/icons/3d/insect_observation.png',
+                      label: '곤충 관찰',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/fishhook.png',
+                      label: '낚시',
+                    ),
+                    ImageCategory(
+                      imagePath: 'assets/images/icons/3d/food.png',
+                      label: '먹거리',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                //const SectionDivider(),
+                BannerWidget(
+                  title: '헬퍼 청년',
+                  subtitle: '마을 일손 도와주고, 무료 숙식 지원받기!',
+                  buttonText: '신청하기',
+                  onPressed: () {
+                    // 버튼 클릭 시 동작
+                  },
+                  imagePath: 'assets/images/login_logo.png', // 이미지 경로
+                ),
+                // 마감 임박 상품
+                const SizedBox(height: 28),
+                const DeadlineSection(),
+                const SizedBox(height: 28),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Support Card
-class _SupportCard extends StatelessWidget {
-  final IconData icon;
-  final String title, subtitle;
-  const _SupportCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Icon(icon, size: 24, color: Colors.blue),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Review Tile
-class _ReviewTile extends StatelessWidget {
-  final String name, time, title, content;
-  final int rating;
-  final List<String> tags;
-  const _ReviewTile({
-    super.key,
-    required this.name,
-    required this.time,
-    required this.title,
-    required this.content,
-    required this.rating,
-    required this.tags,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(child: Text(name[0])),
-      title: Row(
-        children: [
-          Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
-          Text(time, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: List.generate(
-              rating,
-              (_) => const Icon(Icons.star, size: 16, color: Colors.amber),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(content, maxLines: 3, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 6,
-            children:
-                tags
-                    .map(
-                      (t) => Chip(
-                        label: Text(t, style: const TextStyle(fontSize: 12)),
-                      ),
-                    )
-                    .toList(),
           ),
         ],
       ),
