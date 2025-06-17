@@ -232,44 +232,43 @@ class _HomePageState extends State<HomePage> {
                   crossAxisSpacing: 14,
                   children: const [
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/all.png',
+                      imagePath: 'assets/icons/3d/all.png',
                       label: '전체',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/rural_activities.png',
+                      imagePath: 'assets/icons/3d/rural_activities.png',
                       label: '농촌활동',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/experience.png',
+                      imagePath: 'assets/icons/3d/experience.png',
                       label: '체험',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/sightseeing.png',
+                      imagePath: 'assets/icons/3d/sightseeing.png',
                       label: '관광',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/health.png',
+                      imagePath: 'assets/icons/3d/health.png',
                       label: '건강',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/craft.png',
+                      imagePath: 'assets/icons/3d/craft.png',
                       label: '공예',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/cooking.png',
+                      imagePath: 'assets/icons/3d/cooking.png',
                       label: '요리',
                     ),
                     ImageCategory(
-                      imagePath:
-                          'assets/images/icons/3d/insect_observation.png',
+                      imagePath: 'assets/icons/3d/insect_observation.png',
                       label: '곤충 관찰',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/fishhook.png',
+                      imagePath: 'assets/icons/3d/fishhook.png',
                       label: '낚시',
                     ),
                     ImageCategory(
-                      imagePath: 'assets/images/icons/3d/food.png',
+                      imagePath: 'assets/icons/3d/food.png',
                       label: '먹거리',
                     ),
                   ],
