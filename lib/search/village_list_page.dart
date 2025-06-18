@@ -7,13 +7,8 @@ import 'package:youthbuk/search/widgets/filter.dart';
 
 class VillageListPage extends StatefulWidget {
   final String regionName;
-  final bool isOthers;
 
-  const VillageListPage({
-    super.key,
-    required this.regionName,
-    this.isOthers = false,
-  });
+  const VillageListPage({super.key, required this.regionName});
 
   @override
   State<VillageListPage> createState() => _VillageListPageState();
@@ -129,10 +124,7 @@ class _VillageListPageState extends State<VillageListPage> {
           SizedBox(height: 8.h),
           Expanded(
             child: FutureBuilder<List<Village>>(
-              future:
-                  widget.isOthers
-                      ? repo.fetchOthers()
-                      : repo.fetchByRegionName(widget.regionName),
+              future: repo.fetchByRegionName(widget.regionName),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

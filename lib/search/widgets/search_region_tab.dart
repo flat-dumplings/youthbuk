@@ -41,11 +41,7 @@ class SearchRegionTab extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder:
-                      (_) => VillageListPage(
-                        regionName: region['name']!,
-                        isOthers: false,
-                      ),
+                  builder: (_) => VillageListPage(regionName: region['name']!),
                 ),
               );
             },
