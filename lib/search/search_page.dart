@@ -85,8 +85,9 @@ class _TabFilterPageState extends State<SearchPage>
           TabBar(
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             controller: _mainTabController,
-            indicatorColor: Colors.deepPurple,
-            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorColor: Color(0xFFFFB085), // 선택된 탭 아래 라인 색상
+            indicatorWeight: 4.0, // 👉 라인 두께 조절 (기본: 2.0)
+            indicatorSize: TabBarIndicatorSize.label,
             labelColor: Colors.black,
             unselectedLabelColor: Colors.grey,
             labelStyle: TextStyle(fontSize: 19.sp, fontWeight: FontWeight.bold),

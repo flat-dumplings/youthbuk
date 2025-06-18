@@ -89,14 +89,14 @@ class SearchRegionTab extends StatelessWidget {
                           region['name']!,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 18.sp,
+                            fontSize: 16.sp,
                           ),
                         ),
                         Row(
                           children: [
                             const Icon(
                               Icons.check_circle,
-                              size: 18,
+                              size: 16,
                               color: Colors.brown,
                             ),
                             SizedBox(width: 4.w),
