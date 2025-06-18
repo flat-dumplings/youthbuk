@@ -88,41 +88,97 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _currentIndex,
-        onTap: (idx) {
-          if (idx == _currentIndex) return;
-          setState(() => _currentIndex = idx);
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: '홈',
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          margin: const EdgeInsets.symmetric(
+            horizontal: 0,
+            vertical: 6,
+          ), // 화면과 살짝 띄우기
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search_outlined),
-            activeIcon: Icon(Icons.search),
-            label: '탐색',
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(5, (index) {
+              final icons = [
+                Icons.home,
+                Icons.explore,
+                Icons.calendar_today,
+                Icons.chat_bubble,
+                Icons.person,
+              ];
+              final outlines = [
+                Icons.home_outlined,
+                Icons.explore_outlined,
+                Icons.calendar_today_outlined,
+                Icons.chat_bubble_outline,
+                Icons.person_outline,
+              ];
+              final labels = ['홈', '체험', '알바', '커뮤니티', '마이'];
+              final isSelected = index == _currentIndex;
+
+              return GestureDetector(
+                onTap: () {
+                  if (_currentIndex != index) {
+                    setState(() => _currentIndex = index);
+                  }
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? const Color(0xFFFFA86A).withOpacity(0.15)
+                                : Colors.transparent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isSelected ? icons[index] : outlines[index],
+                        size: 24,
+                        color:
+                            isSelected
+                                ? const Color(0xFFFFA86A)
+                                : Colors.black45,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      labels[index],
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            isSelected
+                                ? const Color(0xFFFFA86A)
+                                : Colors.black45,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            activeIcon: Icon(Icons.calendar_today),
-            label: '예약',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: '커뮤니티',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: '마이',
-          ),
-        ],
+        ),
       ),
     );
   }
