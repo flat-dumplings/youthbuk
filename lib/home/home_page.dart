@@ -1,22 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import 'package:youthbuk/home/widgets/Image_category.dart';
-import 'package:youthbuk/home/widgets/banner_widget.dart';
-import 'package:youthbuk/home/widgets/deadline_section.dart';
+import 'widgets/Image_category.dart';
+import 'widgets/banner_widget.dart';
+import 'widgets/deadline_section.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final void Function(int categoryIndex) onCategorySelected;
+
+  const HomePage({super.key, required this.onCategorySelected});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  @override
-  void initState() {
-    super.initState();
-  }
+  final List<Map<String, dynamic>> categories = [
+    {'imagePath': 'assets/icons/3d/all.png', 'label': '전체'},
+    {'imagePath': 'assets/icons/3d/rural_activities.png', 'label': '농촌활동'},
+    {'imagePath': 'assets/icons/3d/experience.png', 'label': '체험'},
+    {'imagePath': 'assets/icons/3d/sightseeing.png', 'label': '관광'},
+    {'imagePath': 'assets/icons/3d/health.png', 'label': '건강'},
+    {'imagePath': 'assets/icons/3d/craft.png', 'label': '공예'},
+    {'imagePath': 'assets/icons/3d/cooking.png', 'label': '요리'},
+    {'imagePath': 'assets/icons/3d/insect_observation.png', 'label': '곤충 관찰'},
+    {'imagePath': 'assets/icons/3d/fishhook.png', 'label': '낚시'},
+    {'imagePath': 'assets/icons/3d/food.png', 'label': '먹거리'},
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +81,6 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Stack(
         children: [
-          // 캐릭터 이미지
           Positioned(
             top: 70.h,
             left: 0,
@@ -84,8 +93,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-
-          // 검색창
           Positioned(
             top: 180.h,
             left: 16.w,
@@ -105,14 +112,11 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-
-          // 전체 콘텐츠
           Positioned.fill(
             top: 240.h,
             child: ListView(
               padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
               children: [
-                // Carousel Banner
                 BannerWidget(
                   imagePaths: [
                     'assets/images/banner/001.png',
@@ -123,12 +127,8 @@ class _HomePageState extends State<HomePage> {
                   ],
                   onTap: (index) {
                     print('배너 $index 클릭됨');
-                    // 원하는 동작 처리
                   },
                 ),
-                //const SizedBox(height: 20),
-
-                // Category Icons
                 GridView.count(
                   padding: EdgeInsets.only(top: 20.h),
                   shrinkWrap: true,
@@ -137,54 +137,21 @@ class _HomePageState extends State<HomePage> {
                   childAspectRatio: 0.7,
                   mainAxisSpacing: 14,
                   crossAxisSpacing: 14,
-                  children: const [
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/all.png',
-                      label: '전체',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/rural_activities.png',
-                      label: '농촌활동',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/experience.png',
-                      label: '체험',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/sightseeing.png',
-                      label: '관광',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/health.png',
-                      label: '건강',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/craft.png',
-                      label: '공예',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/cooking.png',
-                      label: '요리',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/insect_observation.png',
-                      label: '곤충 관찰',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/fishhook.png',
-                      label: '낚시',
-                    ),
-                    ImageCategory(
-                      imagePath: 'assets/icons/3d/food.png',
-                      label: '먹거리',
-                    ),
-                  ],
+                  children: List.generate(categories.length, (index) {
+                    final category = categories[index];
+                    return GestureDetector(
+                      onTap: () {
+                        widget.onCategorySelected(index);
+                      },
+                      child: ImageCategory(
+                        imagePath: category['imagePath'],
+                        label: category['label'],
+                      ),
+                    );
+                  }),
                 ),
                 SizedBox(height: 28.h),
-                //const SectionDivider(),
-                // 마감 임박 상품
                 const DeadlineSection(),
-
                 SizedBox(height: 28.h),
               ],
             ),

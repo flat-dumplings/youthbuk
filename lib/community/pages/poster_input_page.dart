@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PosterInputPage extends StatefulWidget {
   const PosterInputPage({super.key});
@@ -10,202 +9,286 @@ class PosterInputPage extends StatefulWidget {
 }
 
 class _PosterInputPageState extends State<PosterInputPage> {
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-
-  final List<String> _templates = ['fall_1.jpg', 'fall_2.jpg', 'fall_3.jpg'];
-  String? _selectedTemplate;
-
   bool _loading = false;
-  String? _generatedTitle;
-  String? _generatedSubtitle;
-  String? _posterUrl;
 
-  // OpenAI 이미지 생성 API 호출: 텍스트 프롬프트를 받아 이미지 URL 반환
-  Future<String> _generateAiImageUrl(String prompt) async {
-    const openAiApiKey = 'YOUR_OPENAI_API_KEY'; // 반드시 안전하게 관리하세요!
+  // 대상 마을 리스트
+  final List<String> targetVillages = [
+    '장수마을',
+    '장이익어가는마을',
+    '재오개산촌마을',
+    '정안마을',
+    '지내권역마을',
+    '청원사과마을',
+    '청풍호권역농촌체험휴양마을',
+    '체리마을',
+    '초록감투마을',
+    '추평호산뜰애마을',
+    '팔음산마을',
+    '하얀민들레마을',
+    '하일한드미마을',
+    '학현마을',
+    '한두레마을',
+    '한드미마을',
+    '해평산뜰애마을',
+    '햇다래마을',
+    '향수뜰마을',
+    '황금을따는마을',
+    '흙진주포도체험마을',
+    '흰여울마을',
+  ];
 
-    final response = await http.post(
-      Uri.parse('https://api.openai.com/v1/images/generations'),
-      headers: {
-        'Authorization': 'Bearer $openAiApiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        "model": "dall-e-3",
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-      }),
-    );
+  // 1. 지정된 마을만 대상으로 programs 컬렉션에 프로그램 문서 생성 함수
+  Future<void> addProgramsForSelectedVillages() async {
+    final firestore = FirebaseFirestore.instance;
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(response.body);
-      if (decoded['data'] != null && decoded['data'].isNotEmpty) {
-        return decoded['data'][0]['url'];
-      } else {
-        throw Exception('이미지 생성 데이터가 없습니다.');
+    for (final villageId in targetVillages) {
+      final docSnapshot =
+          await firestore.collection('Villages').doc(villageId).get();
+      if (!docSnapshot.exists) {
+        print('[$villageId] 문서가 존재하지 않음, 스킵');
+        continue;
       }
-    } else {
-      throw Exception('이미지 생성 API 오류: ${response.statusCode}');
+      final data = docSnapshot.data();
+      if (data == null || !data.containsKey('체험프로그램명')) {
+        print('[$villageId] 체험프로그램명 필드가 없거나 null, 스킵');
+        continue;
+      }
+      final dynamic combinedProgramsDynamic = data['체험프로그램명'];
+      if (combinedProgramsDynamic is! String) {
+        print('[$villageId] 체험프로그램명 필드가 문자열이 아님, 스킵');
+        continue;
+      }
+      String combinedPrograms = combinedProgramsDynamic.trim();
+      if (combinedPrograms.isEmpty) {
+        print('[$villageId] 체험프로그램명 필드가 빈 문자열, 스킵');
+        continue;
+      }
+
+      List<String> programList = combinedPrograms.split('+');
+      final programCollection = firestore
+          .collection('Villages')
+          .doc(villageId)
+          .collection('programs');
+
+      for (final program in programList) {
+        final trimmed = program.trim();
+        if (trimmed.isEmpty) {
+          print('[$villageId] 빈 프로그램명 발견, 스킵');
+          continue;
+        }
+
+        final docRef = programCollection.doc(trimmed);
+        final docSnapshot = await docRef.get();
+
+        if (!docSnapshot.exists) {
+          try {
+            await docRef.set({
+              'name': trimmed,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+            print('[$villageId] 프로그램 추가됨: $trimmed');
+          } catch (e) {
+            print('[$villageId] 프로그램 추가 실패 ($trimmed): $e');
+          }
+        } else {
+          print('[$villageId] 이미 존재하는 프로그램: $trimmed');
+        }
+      }
+    }
+
+    print('선택된 마을의 모든 체험 프로그램 추가 완료');
+  }
+
+  // 2. 프로그램 문서에 필드 일괄 추가 함수 (모든 마을 대상)
+  Future<void> addEmptyFieldsToPrograms() async {
+    final firestore = FirebaseFirestore.instance;
+    try {
+      final villagesSnapshot = await firestore.collection('Villages').get();
+
+      for (final villageDoc in villagesSnapshot.docs) {
+        final villageId = villageDoc.id;
+
+        final programsSnapshot =
+            await firestore
+                .collection('Villages')
+                .doc(villageId)
+                .collection('programs')
+                .get();
+
+        for (final programDoc in programsSnapshot.docs) {
+          final docRef = programDoc.reference;
+          final data = programDoc.data();
+
+          Map<String, dynamic> newFields = {};
+
+          if (!data.containsKey('category')) newFields['category'] = null;
+          if (!data.containsKey('price')) newFields['price'] = null;
+          if (!data.containsKey('period')) newFields['period'] = null;
+          if (!data.containsKey('maxParticipants'))
+            newFields['maxParticipants'] = null;
+          if (!data.containsKey('photos')) newFields['photos'] = [];
+          if (!data.containsKey('duration')) newFields['duration'] = null;
+          if (!data.containsKey('totalReviewCount'))
+            newFields['totalReviewCount'] = 0;
+          if (!data.containsKey('averageRating'))
+            newFields['averageRating'] = 0.0;
+          if (!data.containsKey('totalParticipants'))
+            newFields['totalParticipants'] = 0;
+          if (!data.containsKey('totalLikes')) newFields['totalLikes'] = 0;
+
+          if (newFields.isNotEmpty) {
+            try {
+              await docRef.update(newFields);
+              print(
+                '[$villageId/${programDoc.id}] 필드 추가됨: ${newFields.keys.toList()}',
+              );
+            } catch (e) {
+              print('[$villageId/${programDoc.id}] 필드 추가 실패: $e');
+            }
+          } else {
+            print('[$villageId/${programDoc.id}] 이미 필드 존재, 스킵');
+          }
+        }
+      }
+      print('모든 프로그램에 새 필드 추가 완료');
+    } catch (e) {
+      print('프로그램 필드 추가 중 오류 발생: $e');
     }
   }
 
-  Future<void> _generatePoster() async {
-    final titlePrompt = _titleController.text.trim();
-    final subtitlePrompt = _descriptionController.text.trim();
+  // 3. 모든 마을의 programs 문서에 villageName 필드 추가 함수
+  Future<void> addVillageNameToPrograms() async {
+    final firestore = FirebaseFirestore.instance;
 
-    if (titlePrompt.isEmpty ||
-        subtitlePrompt.isEmpty ||
-        _selectedTemplate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('제목, 설명, 템플릿을 모두 입력해주세요')));
-      return;
+    try {
+      final villagesSnapshot = await firestore.collection('Villages').get();
+
+      for (final villageDoc in villagesSnapshot.docs) {
+        final villageId = villageDoc.id;
+
+        final programsSnapshot =
+            await firestore
+                .collection('Villages')
+                .doc(villageId)
+                .collection('programs')
+                .get();
+
+        for (final programDoc in programsSnapshot.docs) {
+          final docRef = programDoc.reference;
+          final data = programDoc.data();
+
+          if (data['villageName'] != villageId) {
+            try {
+              await docRef.update({'villageName': villageId});
+              print('[$villageId/${programDoc.id}] villageName 필드 추가/업데이트됨');
+            } catch (e) {
+              print('[$villageId/${programDoc.id}] villageName 필드 추가 실패: $e');
+            }
+          } else {
+            print('[$villageId/${programDoc.id}] 이미 villageName 필드 있음, 스킵');
+          }
+        }
+      }
+      print('모든 프로그램에 villageName 필드 추가 완료');
+    } catch (e) {
+      print('villageName 필드 추가 중 오류 발생: $e');
     }
+  }
 
+  // --- 버튼 핸들러 ---
+
+  Future<void> _handleAddPrograms() async {
     setState(() {
       _loading = true;
-      _generatedTitle = null;
-      _generatedSubtitle = null;
-      _posterUrl = null;
     });
 
     try {
-      // AI 이미지 URL 생성 (제목을 프롬프트로 사용)
-      final aiImageUrl = await _generateAiImageUrl(titlePrompt);
-
-      final url = Uri.parse(
-        'https://us-central1-youthbuk-ba603.cloudfunctions.net/createPoster',
-      );
-
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'titlePrompt': titlePrompt,
-          'subtitlePrompt': subtitlePrompt,
-          'aiImageUrl': aiImageUrl,
-          'templateFileName': _selectedTemplate,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _generatedTitle = data['generatedTitle'];
-          _generatedSubtitle = data['generatedSubtitle'];
-          _posterUrl = data['posterUrl'];
-        });
-      } else {
-        throw Exception('서버 오류: ${response.statusCode}');
-      }
+      await addProgramsForSelectedVillages();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('선택된 마을 체험 프로그램 추가 완료')));
     } catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('오류 발생: $e')));
     } finally {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+      });
     }
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  Future<void> _handleAddEmptyFields() async {
+    setState(() {
+      _loading = true;
+    });
+
+    try {
+      await addEmptyFieldsToPrograms();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('모든 프로그램 필드 추가 완료')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('오류 발생: $e')));
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
   }
+
+  Future<void> _handleAddVillageName() async {
+    setState(() {
+      _loading = true;
+    });
+
+    try {
+      await addVillageNameToPrograms();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('모든 프로그램에 villageName 필드 추가 완료')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('오류 발생: $e')));
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  // --- UI 빌드 ---
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI 포스터 생성')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: '포스터 제목 입력',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: '포스터 부제 입력',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                  labelText: '템플릿 선택',
-                  border: OutlineInputBorder(),
-                ),
-                value: _selectedTemplate,
-                items:
-                    _templates
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedTemplate = val;
-                  });
-                },
-              ),
-              const SizedBox(height: 20),
-              _loading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                    onPressed: _generatePoster,
-                    child: const Text('포스터 생성하기'),
-                  ),
-              const SizedBox(height: 30),
-              if (_posterUrl != null)
-                Stack(
+      appBar: AppBar(title: const Text('선택 마을 프로그램 추가 및 필드 관리')),
+      body: Center(
+        child:
+            _loading
+                ? const CircularProgressIndicator()
+                : Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.network(_posterUrl!),
-                    if (_generatedTitle != null)
-                      Positioned(
-                        left: 50,
-                        top: 30,
-                        child: Text(
-                          _generatedTitle!,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                            shadows: [
-                              Shadow(blurRadius: 2, color: Colors.white),
-                            ],
-                          ),
-                        ),
-                      ),
-                    if (_generatedSubtitle != null)
-                      Positioned(
-                        left: 50,
-                        top: 70,
-                        child: Text(
-                          _generatedSubtitle!,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.black87,
-                            shadows: [
-                              Shadow(blurRadius: 1, color: Colors.white),
-                            ],
-                          ),
-                        ),
-                      ),
+                    ElevatedButton(
+                      onPressed: _handleAddPrograms,
+                      child: const Text('선택된 마을 프로그램 추가 실행'),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _handleAddEmptyFields,
+                      child: const Text('모든 프로그램 필드 추가 실행'),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _handleAddVillageName,
+                      child: const Text('모든 프로그램에 villageName 필드 추가'),
+                    ),
                   ],
                 ),
-            ],
-          ),
-        ),
       ),
     );
   }

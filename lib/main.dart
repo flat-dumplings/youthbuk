@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // ✅ dotenv import
-import 'package:youthbuk/reservation/alba_map_page.dart';
-import 'firebase_options.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// 페이지 임포트
-import 'package:youthbuk/community/pages/poster_input_page.dart';
 import 'package:youthbuk/home/home_page.dart';
 import 'package:youthbuk/search/search_page.dart';
-import 'package:youthbuk/reservation/reservation_page.dart';
-import 'package:youthbuk/mypage/mypage_page.dart';
+import 'package:youthbuk/community/pages/poster_input_page.dart';
 import 'package:youthbuk/member/login_page.dart';
 import 'package:youthbuk/member/signup_page.dart';
 import 'package:youthbuk/member/profile_signup_page.dart';
+import 'package:youthbuk/mypage/mypage_page.dart';
+import 'package:youthbuk/reservation/alba_map_page.dart';
+
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +47,6 @@ class MyApp extends StatelessWidget {
                   : const LoginPage();
             },
             '/main': (_) => const MainPage(),
-            '/home': (_) => const HomePage(),
           },
           home:
               FirebaseAuth.instance.currentUser != null
@@ -62,7 +60,15 @@ class MyApp extends StatelessWidget {
 
 class MainPage extends StatefulWidget {
   final int initialIndex;
-  const MainPage({super.key, this.initialIndex = 0});
+  final Set<int>? initialSelectedFilterIndexes;
+  final int? initialSearchTabIndex; // 추가
+
+  const MainPage({
+    super.key,
+    this.initialIndex = 0,
+    this.initialSelectedFilterIndexes,
+    this.initialSearchTabIndex,
+  });
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -70,33 +76,52 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   late int _currentIndex;
+  Set<int> _selectedFilterIndexes = {0};
+  int _searchPageInitialTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _searchPageInitialTabIndex = widget.initialSearchTabIndex ?? 0;
+    if (widget.initialSelectedFilterIndexes != null) {
+      _selectedFilterIndexes = widget.initialSelectedFilterIndexes!;
+      if (_currentIndex == 1) {
+        _searchPageInitialTabIndex = 1; // 체험별 탭으로 강제 이동
+      }
+    }
   }
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    SearchPage(),
-    AlbaMapPage(),
-    PosterInputPage(),
-    MyPage(),
-  ];
+  void onCategorySelected(int categoryIndex) {
+    setState(() {
+      _selectedFilterIndexes = {categoryIndex};
+      _currentIndex = 1;
+      _searchPageInitialTabIndex = 1; // 체험별 탭으로 강제 이동
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          HomePage(onCategorySelected: onCategorySelected),
+          SearchPage(
+            initialTabIndex: _searchPageInitialTabIndex,
+            initialSelectedFilterIndexes: _selectedFilterIndexes,
+            key: ValueKey(_searchPageInitialTabIndex), // 탭 인덱스 변경시 재빌드 유도
+          ),
+          AlbaMapPage(),
+          PosterInputPage(),
+          MyPage(),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          margin: const EdgeInsets.symmetric(
-            horizontal: 0,
-            vertical: 6,
-          ), // 화면과 살짝 띄우기
+          margin: const EdgeInsets.symmetric(vertical: 6),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -135,7 +160,13 @@ class _MainPageState extends State<MainPage> {
               return GestureDetector(
                 onTap: () {
                   if (_currentIndex != index) {
-                    setState(() => _currentIndex = index);
+                    setState(() {
+                      _currentIndex = index;
+                      if (_currentIndex != 1) {
+                        _selectedFilterIndexes = {0};
+                        _searchPageInitialTabIndex = 0;
+                      }
+                    });
                   }
                 },
                 child: Column(

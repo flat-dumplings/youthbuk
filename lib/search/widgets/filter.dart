@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class Filter extends StatefulWidget {
-  const Filter({super.key});
+  final void Function(Set<int> selectedIndexes)? onChanged;
+  final Set<int>? selectedIndexes;
+
+  const Filter({super.key, this.onChanged, this.selectedIndexes});
 
   @override
   State<Filter> createState() => _FilterState();
@@ -22,12 +25,21 @@ class _FilterState extends State<Filter> {
     {'emoji': '🍱', 'label': '먹거리'},
   ];
 
-  Set<int> selectedIndexes = {0};
+  late Set<int> selectedIndexes;
   bool isExpanded = false;
 
   final Color themePrimary = const Color(0xFFFF8C69);
   final Color themeBackground = const Color(0xFFFFF1EC);
   final Color themeTextColor = const Color(0xFF5C4B3B);
+
+  @override
+  void initState() {
+    super.initState();
+    selectedIndexes =
+        widget.selectedIndexes != null
+            ? Set<int>.from(widget.selectedIndexes!)
+            : {0};
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,13 +158,18 @@ class _FilterState extends State<Filter> {
                         selectedIndexes.add(0);
                       } else {
                         selectedIndexes.remove(0);
-                        selectedIndexes.contains(i)
-                            ? selectedIndexes.remove(i)
-                            : selectedIndexes.add(i);
+                        if (selected) {
+                          selectedIndexes.remove(i);
+                        } else {
+                          selectedIndexes.add(i);
+                        }
+                      }
+                      if (widget.onChanged != null) {
+                        widget.onChanged!(Set<int>.from(selectedIndexes));
                       }
                     }),
                 child: AnimatedContainer(
-                  duration: Duration(milliseconds: 150),
+                  duration: const Duration(milliseconds: 150),
                   padding: EdgeInsets.symmetric(
                     horizontal: 12.w,
                     vertical: 8.h,

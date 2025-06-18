@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'category_filter.dart';
+import 'alba_list.dart';
+import 'map_view.dart';
+
 class AlbaMapPage extends StatefulWidget {
   const AlbaMapPage({super.key});
 
@@ -10,53 +14,86 @@ class AlbaMapPage extends StatefulWidget {
 }
 
 class _AlbaMapPageState extends State<AlbaMapPage> {
-  late WebViewController _controller;
-  List<Map<String, dynamic>> positions = [];
+  late final WebViewController _controller;
+  List<Map<String, dynamic>> albas = [];
+  String selectedCategory = '전체';
+
+  final List<String> categories = [
+    '전체',
+    '케이크',
+    '꽃다발',
+    '주얼리',
+    '반려동물',
+    '디저트',
+    '핸드폰악세서리',
+    '토퍼',
+    '공예',
+    '드로잉',
+    '의류',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadPositions();
+
+    _controller =
+        WebViewController()..setJavaScriptMode(JavaScriptMode.unrestricted);
+    _loadAlbas();
   }
 
-  Future<void> _loadPositions() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('Villages').get();
+  Future<void> _loadAlbas() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('Villages').get();
 
-    final List<Map<String, dynamic>> tempPositions = [];
+      final List<Map<String, dynamic>> tempAlbas = [];
 
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
 
-      double? lat;
-      double? lng;
+        double? lat;
+        double? lng;
 
-      if (data['location'] is GeoPoint) {
-        final geo = data['location'] as GeoPoint;
-        lat = geo.latitude;
-        lng = geo.longitude;
-      } else if (data['위도'] != null && data['경도'] != null) {
-        lat = (data['위도'] as num).toDouble();
-        lng = (data['경도'] as num).toDouble();
-      } else {
-        continue;
+        if (data['location'] is GeoPoint) {
+          final geo = data['location'] as GeoPoint;
+          lat = geo.latitude;
+          lng = geo.longitude;
+        } else if (data['위도'] != null && data['경도'] != null) {
+          lat = (data['위도'] as num).toDouble();
+          lng = (data['경도'] as num).toDouble();
+        } else {
+          continue;
+        }
+
+        tempAlbas.add({
+          'title':
+              data['jobTitle']?.toString().replaceAll('"', '\\"') ?? doc.id,
+          'lat': lat,
+          'lng': lng,
+          'category': data['category'] ?? '기타',
+          'company': data['company'] ?? '',
+          'salary': data['salary'] ?? '',
+          'workTime': data['workTime'] ?? '',
+        });
       }
 
-      tempPositions.add({
-        'title': data['체험마을명'] ?? doc.id,
-        'lat': lat,
-        'lng': lng,
+      setState(() {
+        albas = tempAlbas;
       });
-    }
 
-    setState(() {
-      positions = tempPositions;
-      _loadWebView();
-    });
+      _loadMap();
+    } catch (e) {
+      print('Firestore 데이터 로드 실패: $e');
+    }
   }
 
-  void _loadWebView() {
-    final positionsJson = positions
+  void _loadMap() {
+    final filtered =
+        selectedCategory == '전체'
+            ? albas
+            : albas.where((e) => e['category'] == selectedCategory).toList();
+
+    final positionsJson = filtered
         .map(
           (pos) => '''
       {title: "${pos['title']}", latlng: new kakao.maps.LatLng(${pos['lat']}, ${pos['lng']})}
@@ -64,61 +101,66 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
         )
         .join(',');
 
-    final htmlString = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=a950dedd7f25a1df5390cdff6f17652b&autoload=false"></script>
-      <style> html, body, #map { margin:0; padding:0; width:100%; height:100%; overflow:hidden; } </style>
-    </head>
-    <body>
-      <div id="map" style="width:100%; height:100%;"></div>
-      <script>
-        kakao.maps.load(function() {
-          var container = document.getElementById('map');
-          var options = { 
-            center: new kakao.maps.LatLng(37.5665, 126.9780),
-            level: 3
-          };
-          var map = new kakao.maps.Map(container, options);
-
-          var positions = [$positionsJson];
-
-          for(var i=0; i<positions.length; i++) {
-            var marker = new kakao.maps.Marker({
-              map: map,
-              position: positions[i].latlng
-            });
-
-            var infowindow = new kakao.maps.InfoWindow({
-              content: '<div style="padding:5px;">' + positions[i].title + '</div>'
-            });
-
-            kakao.maps.event.addListener(marker, 'click', (function(marker, infowindow) {
-              return function() {
-                infowindow.open(map, marker);
-              };
-            })(marker, infowindow));
-          }
-        });
-      </script>
-    </body>
-    </html>
-    ''';
-
+    final htmlString = MapView.buildHtml(positionsJson);
     _controller.loadHtmlString(htmlString);
+  }
+
+  void _onCategoryChanged(String category) {
+    setState(() {
+      selectedCategory = category;
+      _loadMap();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final filteredAlbas =
+        selectedCategory == '전체'
+            ? albas
+            : albas.where((e) => e['category'] == selectedCategory).toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('알바 지도 - 카카오 (Firestore)')),
-      body: WebViewWidget(
-        controller:
-            (_controller =
-                WebViewController()
-                  ..setJavaScriptMode(JavaScriptMode.unrestricted)),
+      body: Stack(
+        children: [
+          Positioned.fill(child: WebViewWidget(controller: _controller)),
+
+          // 카테고리 필터는 상단에 고정 배치
+          Positioned(
+            top: 16,
+            left: 8,
+            right: 8,
+            child: CategoryFilter(
+              categories: categories,
+              selectedCategory: selectedCategory,
+              onCategorySelected: _onCategoryChanged,
+            ),
+          ),
+
+          // DraggableScrollableSheet 로 리스트를 드래그 가능하게
+          DraggableScrollableSheet(
+            initialChildSize: 0.45, // 처음엔 화면 45% 차지
+            minChildSize: 0.1, // 최소 10%까지 줄일 수 있음
+            maxChildSize: 0.9, // 최대 90%까지 확장 가능
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 12),
+                  ],
+                ),
+                child: AlbaList(
+                  albas: filteredAlbas,
+                  scrollController: scrollController, // 스크롤 컨트롤러 전달
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
