@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart'; // ✅ dotenv import
+import 'package:youthbuk/reservation/alba_map_page.dart';
 import 'firebase_options.dart';
 
 // 페이지 임포트
@@ -79,7 +80,7 @@ class _MainPageState extends State<MainPage> {
   final List<Widget> _pages = const [
     HomePage(),
     SearchPage(),
-    ReservationPage(),
+    AlbaMapPage(),
     PosterInputPage(),
     MyPage(),
   ];

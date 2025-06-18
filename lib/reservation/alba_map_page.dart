@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+class AlbaMapPage extends StatefulWidget {
+  const AlbaMapPage({super.key});
+
+  @override
+  State<AlbaMapPage> createState() => _AlbaMapPageState();
+}
+
+class _AlbaMapPageState extends State<AlbaMapPage> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller =
+        WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..loadHtmlString('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=a950dedd7f25a1df5390cdff6f17652b&autoload=false"></script>
+      <style> html, body, #map { margin:0; padding:0; width:100%; height:100%; overflow:hidden; } </style>
+    </head>
+    <body>
+      <div id="map" style="width:100%; height:100%;"></div>
+      <script>
+        kakao.maps.load(function() {
+          var container = document.getElementById('map');
+          var options = { 
+            center: new kakao.maps.LatLng(37.5665, 126.9780),
+            level: 3
+          };
+          var map = new kakao.maps.Map(container, options);
+
+          var positions = [
+            {title:'카페 바리스타', latlng: new kakao.maps.LatLng(37.5665, 126.9780)},
+            {title:'편의점 아르바이트', latlng: new kakao.maps.LatLng(37.5651, 126.9895)},
+            {title:'온라인 CS 상담', latlng: new kakao.maps.LatLng(37.5700, 126.9820)}
+          ];
+
+          for(var i=0; i<positions.length; i++) {
+            var marker = new kakao.maps.Marker({
+              map: map,
+              position: positions[i].latlng
+            });
+
+            var infowindow = new kakao.maps.InfoWindow({
+              content: '<div style="padding:5px;">' + positions[i].title + '</div>'
+            });
+
+            kakao.maps.event.addListener(marker, 'click', (function(marker, infowindow) {
+              return function() {
+                infowindow.open(map, marker);
+              };
+            })(marker, infowindow));
+          }
+        });
+      </script>
+    </body>
+    </html>
+  ''');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('알바 지도 - 카카오'), centerTitle: true),
+      body: WebViewWidget(controller: _controller),
+    );
+  }
+}
