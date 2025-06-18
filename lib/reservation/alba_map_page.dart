@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AlbaMapPage extends StatefulWidget {
   const AlbaMapPage({super.key});
@@ -9,16 +10,61 @@ class AlbaMapPage extends StatefulWidget {
 }
 
 class _AlbaMapPageState extends State<AlbaMapPage> {
-  late final WebViewController _controller;
+  late WebViewController _controller;
+  List<Map<String, dynamic>> positions = [];
 
   @override
   void initState() {
     super.initState();
+    _loadPositions();
+  }
 
-    _controller =
-        WebViewController()
-          ..setJavaScriptMode(JavaScriptMode.unrestricted)
-          ..loadHtmlString('''
+  Future<void> _loadPositions() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('Villages').get();
+
+    final List<Map<String, dynamic>> tempPositions = [];
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+
+      double? lat;
+      double? lng;
+
+      if (data['location'] is GeoPoint) {
+        final geo = data['location'] as GeoPoint;
+        lat = geo.latitude;
+        lng = geo.longitude;
+      } else if (data['위도'] != null && data['경도'] != null) {
+        lat = (data['위도'] as num).toDouble();
+        lng = (data['경도'] as num).toDouble();
+      } else {
+        continue;
+      }
+
+      tempPositions.add({
+        'title': data['체험마을명'] ?? doc.id,
+        'lat': lat,
+        'lng': lng,
+      });
+    }
+
+    setState(() {
+      positions = tempPositions;
+      _loadWebView();
+    });
+  }
+
+  void _loadWebView() {
+    final positionsJson = positions
+        .map(
+          (pos) => '''
+      {title: "${pos['title']}", latlng: new kakao.maps.LatLng(${pos['lat']}, ${pos['lng']})}
+    ''',
+        )
+        .join(',');
+
+    final htmlString = '''
     <!DOCTYPE html>
     <html>
     <head>
@@ -37,11 +83,7 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
           };
           var map = new kakao.maps.Map(container, options);
 
-          var positions = [
-            {title:'카페 바리스타', latlng: new kakao.maps.LatLng(37.5665, 126.9780)},
-            {title:'편의점 아르바이트', latlng: new kakao.maps.LatLng(37.5651, 126.9895)},
-            {title:'온라인 CS 상담', latlng: new kakao.maps.LatLng(37.5700, 126.9820)}
-          ];
+          var positions = [$positionsJson];
 
           for(var i=0; i<positions.length; i++) {
             var marker = new kakao.maps.Marker({
@@ -63,14 +105,21 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
       </script>
     </body>
     </html>
-  ''');
+    ''';
+
+    _controller.loadHtmlString(htmlString);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('알바 지도 - 카카오'), centerTitle: true),
-      body: WebViewWidget(controller: _controller),
+      appBar: AppBar(title: const Text('알바 지도 - 카카오 (Firestore)')),
+      body: WebViewWidget(
+        controller:
+            (_controller =
+                WebViewController()
+                  ..setJavaScriptMode(JavaScriptMode.unrestricted)),
+      ),
     );
   }
 }
