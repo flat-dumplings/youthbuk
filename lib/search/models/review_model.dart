@@ -3,14 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Review {
   final String id;
   final String authorId;
-  final String? authorNickname; // 추가
+  final String? authorNickname;
   final String villageName;
   final String content;
   final double star;
   final DateTime createAt;
   final DateTime updateAt;
   final String? title;
+  final List<String>? imageUrl;
   final List<String>? hashtags;
+  final int? like;
 
   Review({
     required this.id,
@@ -22,7 +24,9 @@ class Review {
     required this.createAt,
     required this.updateAt,
     this.title,
+    this.imageUrl,
     this.hashtags,
+    this.like,
   });
 
   factory Review.fromDocument(DocumentSnapshot doc) {
@@ -30,17 +34,24 @@ class Review {
     return Review(
       id: doc.id,
       authorId: data['authorId'] as String,
-      authorNickname: data['authorNickname'] as String?, // 추가
+      authorNickname: data['authorNickname'] as String?,
       villageName: data['체험마을명'] as String,
       content: data['content'] as String,
-      star: (data['star'] as num).toDouble(),
-      createAt: (data['create_at'] as Timestamp).toDate(),
-      updateAt: (data['update_at'] as Timestamp).toDate(),
+      star: (data['star'] as num?)?.toDouble() ?? 0.0,
+      createAt:
+          (data['create_at'] is Timestamp)
+              ? (data['create_at'] as Timestamp).toDate()
+              : DateTime.now(),
+      updateAt:
+          (data['update_at'] is Timestamp)
+              ? (data['update_at'] as Timestamp).toDate()
+              : DateTime.now(),
+      like: (data['like'] as int?) ?? 0,
       title: data['title'] as String?,
+      imageUrl:
+          data['imageUrl'] is List ? List<String>.from(data['imageUrl']) : null,
       hashtags:
-          data['hashtags'] != null
-              ? List<String>.from(data['hashtags'] as List)
-              : null,
+          data['hashtags'] is List ? List<String>.from(data['hashtags']) : null,
     );
   }
 
@@ -59,8 +70,14 @@ class Review {
     if (title != null) {
       map['title'] = title;
     }
-    if (hashtags != null) {
+    if (hashtags != null && hashtags!.isNotEmpty) {
       map['hashtags'] = hashtags;
+    }
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      map['imageUrl'] = imageUrl;
+    }
+    if (like != null) {
+      map['like'] = like;
     }
     return map;
   }
