@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'category_filter.dart';
 import 'alba_list.dart';
@@ -17,6 +20,8 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
   late final WebViewController _controller;
   List<Map<String, dynamic>> albas = [];
   String selectedCategory = '전체';
+
+  Position? _currentPosition;
 
   final List<String> categories = [
     '전체',
@@ -38,7 +43,40 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
 
     _controller =
         WebViewController()..setJavaScriptMode(JavaScriptMode.unrestricted);
-    _loadAlbas();
+
+    _determinePosition().then((_) {
+      _loadAlbas();
+    });
+  }
+
+  Future<void> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // 위치 서비스 비활성 시 처리
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    final pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    setState(() {
+      _currentPosition = pos;
+    });
   }
 
   Future<void> _loadAlbas() async {
@@ -93,15 +131,17 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
             ? albas
             : albas.where((e) => e['category'] == selectedCategory).toList();
 
-    final positionsJson = filtered
-        .map(
-          (pos) => '''
-      {title: "${pos['title']}", latlng: new kakao.maps.LatLng(${pos['lat']}, ${pos['lng']})}
-    ''',
-        )
-        .join(',');
+    final positions =
+        filtered.map((pos) {
+          return {'title': pos['title'], 'lat': pos['lat'], 'lng': pos['lng']};
+        }).toList();
 
-    final htmlString = MapView.buildHtml(positionsJson);
+    final positionsJson = jsonEncode(positions);
+
+    final lat = _currentPosition?.latitude ?? 36.3504; // 기본값 설정
+    final lng = _currentPosition?.longitude ?? 127.3845;
+
+    final htmlString = MapView.buildHtml(positionsJson, lat, lng);
     _controller.loadHtmlString(htmlString);
   }
 
@@ -125,7 +165,7 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
         children: [
           Positioned.fill(child: WebViewWidget(controller: _controller)),
 
-          // 카테고리 필터는 상단에 고정 배치
+          // 카테고리 필터 상단 고정
           Positioned(
             top: 16,
             left: 8,
@@ -137,11 +177,11 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
             ),
           ),
 
-          // DraggableScrollableSheet 로 리스트를 드래그 가능하게
+          // 드래그 가능한 리스트
           DraggableScrollableSheet(
-            initialChildSize: 0.45, // 처음엔 화면 45% 차지
-            minChildSize: 0.1, // 최소 10%까지 줄일 수 있음
-            maxChildSize: 0.9, // 최대 90%까지 확장 가능
+            initialChildSize: 0.45,
+            minChildSize: 0.1,
+            maxChildSize: 0.9,
             builder: (context, scrollController) {
               return Container(
                 decoration: BoxDecoration(
@@ -155,7 +195,7 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
                 ),
                 child: AlbaList(
                   albas: filteredAlbas,
-                  scrollController: scrollController, // 스크롤 컨트롤러 전달
+                  scrollController: scrollController,
                 ),
               );
             },

@@ -1,5 +1,7 @@
 class MapView {
-  static String buildHtml(String positionsJson) => '''
+  // positionsJson: 마커 위치 및 정보 JSON 문자열
+  // lat, lng: 현재 위치 위도, 경도 (시작 위치로 사용)
+  static String buildHtml(String positionsJson, double lat, double lng) => '''
 <!DOCTYPE html>
 <html>
 <head>
@@ -17,7 +19,7 @@ class MapView {
     kakao.maps.load(function() {
       var container = document.getElementById('map');
       var options = {
-        center: new kakao.maps.LatLng(36.3504, 127.3845),
+        center: new kakao.maps.LatLng($lat, $lng), // Flutter에서 전달받은 현재 위치 사용
         level: 3
       };
       var map = new kakao.maps.Map(container, options);
@@ -25,12 +27,12 @@ class MapView {
       var zoomControl = new kakao.maps.ZoomControl();
       map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
 
-      var positions = [$positionsJson];
+      var positions = $positionsJson;
 
       for(var i=0; i<positions.length; i++) {
         var marker = new kakao.maps.Marker({
           map: map,
-          position: positions[i].latlng
+          position: new kakao.maps.LatLng(positions[i].lat, positions[i].lng)
         });
 
         var infowindow = new kakao.maps.InfoWindow({
