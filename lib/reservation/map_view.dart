@@ -5,8 +5,10 @@ class MapView {
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=a950dedd7f25a1df5390cdff6f17652b&autoload=false"></script>
+  <title>네이버 지도</title>
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=oytgb4kt0a"></script>
   <style>
     html, body, #map {
       margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
@@ -16,36 +18,36 @@ class MapView {
 <body>
   <div id="map"></div>
   <script>
-    kakao.maps.load(function() {
-      var container = document.getElementById('map');
-      var options = {
-        center: new kakao.maps.LatLng($lat, $lng), // Flutter에서 전달받은 현재 위치 사용
-        level: 3
-      };
-      var map = new kakao.maps.Map(container, options);
+    (function() {
+      var map = new naver.maps.Map('map', {
+        center: new naver.maps.LatLng($lat, $lng),
+        level: 10
+      });
 
-      var zoomControl = new kakao.maps.ZoomControl();
-      map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+      var zoomControl = new naver.maps.ZoomControl();
+      map.addControl(zoomControl, naver.maps.Position.TOP_RIGHT);
 
-      var positions = $positionsJson;
+      var positions = JSON.parse('$positionsJson');
+      var infowindow = null;
 
-      for(var i=0; i<positions.length; i++) {
-        var marker = new kakao.maps.Marker({
+      positions.forEach(function(pos) {
+        var marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(pos.lat, pos.lng),
           map: map,
-          position: new kakao.maps.LatLng(positions[i].lat, positions[i].lng)
+          title: pos.title
         });
 
-        var infowindow = new kakao.maps.InfoWindow({
-          content: '<div style="padding:5px;">' + positions[i].title + '</div>'
+        marker.addListener('click', function() {
+          if (infowindow) {
+            infowindow.close();
+          }
+          infowindow = new naver.maps.InfoWindow({
+            content: '<div style="padding:5px;">' + pos.title + '</div>'
+          });
+          infowindow.open(map, marker);
         });
-
-        kakao.maps.event.addListener(marker, 'click', (function(marker, infowindow) {
-          return function() {
-            infowindow.open(map, marker);
-          };
-        })(marker, infowindow));
-      }
-    });
+      });
+    })();
   </script>
 </body>
 </html>

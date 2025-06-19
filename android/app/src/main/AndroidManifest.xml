@@ -26,6 +26,11 @@
     android:requestLegacyExternalStorage="true" 
     android:usesCleartextTraffic="true"> <!-- 이 부분 추가 -->
 
+    <!-- 네이버 지도 API 키 추가 -->
+    <meta-data
+      android:name="com.naver.maps.map.CLIENT_ID"
+      android:value="oytgb4kt0a" />
+
     <activity
       android:name=".MainActivity"
       android:exported="true"

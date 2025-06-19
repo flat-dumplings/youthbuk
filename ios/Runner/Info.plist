@@ -70,5 +70,9 @@
   <key>NSLocationWhenInUseUsageDescription</key>
   <string>지도 또는 위치 기반 서비스를 사용할 때 위치 접근 권한이 필요합니다.</string>
 
+  <!-- 네이버 지도 키 -->
+  <key>NMFClientId</key>
+  <string>oytgb4kt0a</string>
+
 </dict>
 </plist>
