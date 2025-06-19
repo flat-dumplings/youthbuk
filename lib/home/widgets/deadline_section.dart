@@ -20,28 +20,20 @@ class _DeadlineSectionState extends State<DeadlineSection> {
     _determinePosition();
   }
 
-  // 현재 위치 가져오기
   Future<void> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // 위치 서비스 비활성 시 처리
-      return;
-    }
+    if (!serviceEnabled) return;
 
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return;
-      }
+      if (permission == LocationPermission.denied) return;
     }
 
-    if (permission == LocationPermission.deniedForever) {
-      return;
-    }
+    if (permission == LocationPermission.deniedForever) return;
 
     final pos = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
@@ -51,7 +43,6 @@ class _DeadlineSectionState extends State<DeadlineSection> {
     });
   }
 
-  // 거리 계산 (km)
   double calculateDistanceKm(
     double lat1,
     double lon1,
@@ -78,11 +69,7 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                 return {
                   'title': data['name'] ?? '이름 없음',
                   'company': data['villageName'] ?? '마을명 없음',
-                  'imagePath':
-                      (data['photos'] != null &&
-                              (data['photos'] as List).isNotEmpty)
-                          ? (data['photos'] as List).first
-                          : 'assets/images/login_logo.png',
+                  'imagePath': data['titlePhoto'], // 여기에선 검증 안함
                   'deadline': (data['endDate'] as Timestamp).toDate(),
                   'region': data['region'] ?? '지역 정보 없음',
                   'latitude': data['latitude'],
@@ -125,7 +112,6 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                   final data = dataList[index];
                   final DateTime deadline = data['deadline'] as DateTime;
                   final DateTime today = DateTime.now();
-
                   final DateTime todayOnly = DateTime(
                     today.year,
                     today.month,
@@ -159,6 +145,11 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                     );
                   }
 
+                  final imagePath = data['imagePath'];
+                  final isValidUrl =
+                      imagePath != null &&
+                      imagePath.toString().startsWith('http');
+
                   return Container(
                     width: 180.w,
                     decoration: BoxDecoration(
@@ -181,12 +172,27 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                           ),
                           child: Stack(
                             children: [
-                              Image.asset(
-                                data['imagePath']!,
-                                width: double.infinity,
-                                height: 150.h,
-                                fit: BoxFit.cover,
-                              ),
+                              isValidUrl
+                                  ? Image.network(
+                                    imagePath,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 150.h,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Image.asset(
+                                        'assets/images/default.png',
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        height: 150.h,
+                                      );
+                                    },
+                                  )
+                                  : Image.asset(
+                                    'assets/images/default.png',
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 150.h,
+                                  ),
                               Positioned.fill(
                                 child: Container(
                                   decoration: const BoxDecoration(
@@ -231,8 +237,6 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                                   ),
                                 ),
                               ),
-
-                              // 중복된 거리 텍스트 제거 위해 아래 Positioned 삭제
                               Positioned(
                                 bottom: 8.h,
                                 left: 10.w,
@@ -274,30 +278,31 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                         SizedBox(
                           height: 60.h,
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 6.h),
+                            padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 2.h),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
+                              //mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   data['company']!,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 12.sp,
+                                    fontSize: 14.sp,
                                     color: Colors.grey.shade500,
                                     fontWeight: FontWeight.w500,
                                     height: 1.2,
                                   ),
                                 ),
-                                SizedBox(height: 2.h),
+                                SizedBox(height: 8.h),
                                 Text(
                                   data['title']!,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 14.sp,
+                                    fontSize: 16.sp,
                                     color: Colors.black,
                                     height: 1.2,
                                   ),
