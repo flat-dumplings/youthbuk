@@ -356,6 +356,7 @@ class _SearchActivityTabState extends State<SearchActivityTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youthbuk/search/models/village.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:youthbuk/search/widgets/village_detail_tab2.dart';
 import 'package:youthbuk/search/widgets/village_detail_tab3.dart';
 
 class VillageDetailPage extends StatefulWidget {
@@ -272,7 +273,7 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: Row(
                     children: List.generate(3, (index) {
-                      final titles = ['소개', '체험', '후기'];
+                      final titles = ['라이프', '체험', '후기'];
                       final isSelected = _selectedTabIndex == index;
 
                       return Expanded(
@@ -319,10 +320,10 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
                 ),
                 SizedBox(height: 16.h),
 
-                if (_selectedTabIndex == 0) // 소개 탭
-                  Text('소개 탭 내용입니다')
+                if (_selectedTabIndex == 0) // 라이프 탭
+                  Text('라이프 탭 내용입니다')
                 else if (_selectedTabIndex == 1) // 체험 탭
-                  Text('체험 탭 내용입니다')
+                  VillageDetailTab2(villageId: village.id)
                 else if (_selectedTabIndex == 2) // 리뷰 탭
                   VillageDetailTab3(villageId: village.id),
                 SizedBox(height: 24.h),

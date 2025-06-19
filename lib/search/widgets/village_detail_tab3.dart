@@ -244,30 +244,32 @@ class _VillageDetailTab3State extends State<VillageDetailTab3> {
             : '익명';
     final dateStr = DateFormat('yyyy.MM.dd').format(review.createAt);
     final hashtags = review.hashtags ?? [];
-    final imageUrl =
-        (review.imageUrl != null && review.imageUrl!.isNotEmpty)
-            ? review.imageUrl!.first
-            : null;
     final isMine = review.authorId == FirebaseAuth.instance.currentUser?.uid;
+
     return Container(
-      padding: EdgeInsets.all(20.w),
-      margin: EdgeInsets.only(bottom: 12.h),
+      margin: EdgeInsets.only(bottom: 20.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
+        ],
       ),
+      padding: EdgeInsets.all(16.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               CircleAvatar(
-                radius: 16.r,
+                radius: 18.r,
                 backgroundColor: Colors.grey.shade300,
                 child: Text(
                   displayName[0],
-                  style: const TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               SizedBox(width: 8.w),
@@ -278,15 +280,15 @@ class _VillageDetailTab3State extends State<VillageDetailTab3> {
                     Text(
                       displayName,
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
                         fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 4.h),
+                    SizedBox(height: 2.h),
                     Row(
                       children: [
                         Icon(Icons.star, size: 16.sp, color: Colors.orange),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 2.w),
                         Text(
                           review.star.toStringAsFixed(1),
                           style: TextStyle(
@@ -309,7 +311,7 @@ class _VillageDetailTab3State extends State<VillageDetailTab3> {
               Text('${review.like ?? 0}', style: TextStyle(fontSize: 13.sp)),
               if (isMine)
                 Padding(
-                  padding: EdgeInsets.only(left: 15.w),
+                  padding: EdgeInsets.only(left: 12.w),
                   child: GestureDetector(
                     onTap: () async {
                       final result = await Navigator.push(
@@ -339,39 +341,93 @@ class _VillageDetailTab3State extends State<VillageDetailTab3> {
                 ),
             ],
           ),
-          if (imageUrl != null) ...[
-            SizedBox(height: 12.h),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8.r),
-              child: Image.network(
-                imageUrl,
-                height: 160.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder:
-                    (context, error, stackTrace) => Container(
-                      height: 160.h,
-                      width: double.infinity,
-                      color: Colors.grey.shade200,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.broken_image,
-                        size: 40.sp,
-                        color: Colors.grey,
-                      ),
-                    ),
-              ),
+          if (review.imageUrl != null && review.imageUrl!.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 12.h),
+              child: _imageSliderWithTap(context, review.imageUrl!),
             ),
-          ],
           SizedBox(height: 12.h),
           Text(
             review.content,
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
           ),
-          SizedBox(height: 12.h),
           if (hashtags.isNotEmpty)
-            Wrap(spacing: 6.w, children: hashtags.map(_tagChip).toList()),
+            Padding(
+              padding: EdgeInsets.only(top: 12.h),
+              child: Wrap(
+                spacing: 6.w,
+                runSpacing: 4.h,
+                children: hashtags.map(_tagChip).toList(),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _imageSliderWithTap(BuildContext context, List<String> images) {
+    final PageController controller = PageController();
+    return GestureDetector(
+      onTap:
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => _ImageGalleryPage(images: images),
+            ),
+          ),
+      child: SizedBox(
+        height: 160.h,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: controller,
+              itemCount: images.length,
+              itemBuilder:
+                  (_, index) => Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4.w),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12.r),
+                      child: Image.network(
+                        images[index],
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (_, __, ___) => Container(
+                              color: Colors.grey.shade200,
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.grey,
+                              ),
+                            ),
+                      ),
+                    ),
+                  ),
+            ),
+            Positioned(
+              bottom: 6.h,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  images.length,
+                  (index) => Container(
+                    margin: EdgeInsets.symmetric(horizontal: 2.w),
+                    width: 6.w,
+                    height: 6.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black26,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -392,5 +448,47 @@ class _VillageDetailTab3State extends State<VillageDetailTab3> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+}
+
+class _ImageGalleryPage extends StatelessWidget {
+  final List<String> images;
+  const _ImageGalleryPage({required this.images});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PageView.builder(
+            itemCount: images.length,
+            itemBuilder:
+                (_, index) => InteractiveViewer(
+                  child: Image.network(
+                    images[index],
+                    fit: BoxFit.contain,
+                    errorBuilder:
+                        (_, __, ___) => Center(
+                          child: Icon(
+                            Icons.broken_image,
+                            size: 50,
+                            color: Colors.white,
+                          ),
+                        ),
+                  ),
+                ),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
