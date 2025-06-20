@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:youthbuk/community/services/openai_api.dart';
-import 'poster_result_page.dart'; // 결과 페이지 재활용 (필요 시 별도 생성 가능)
+import 'poster_result_page.dart';
 
 class CharacterCreatePage extends StatefulWidget {
   const CharacterCreatePage({super.key});
@@ -17,22 +18,29 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
 
-  final String openAiApiKey = 'YOUR_OPENAI_API_KEY'; // 본인 키로 교체하세요
+  late final String openAiApiKey;
+
+  @override
+  void initState() {
+    super.initState();
+    openAiApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+  }
 
   Future<void> _pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
     );
-    if (pickedFile != null)
+    if (pickedFile != null) {
       setState(() => _selectedImage = File(pickedFile.path));
+    }
   }
 
   Future<void> _createCharacter() async {
     final prompt = _descriptionController.text.trim();
-    if (_selectedImage == null || prompt.isEmpty) {
+    if (prompt.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('이미지와 설명을 모두 입력해주세요')));
+      ).showSnackBar(const SnackBar(content: Text('설명을 입력해주세요')));
       return;
     }
 
@@ -41,7 +49,7 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
     final imageUrl = await generateImageOpenAI(
       apiKey: openAiApiKey,
       prompt: prompt,
-      size: "512x512", // 캐릭터 1:1 비율
+      size: "1024x1024",
     );
 
     setState(() => _isLoading = false);

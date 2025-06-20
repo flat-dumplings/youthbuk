@@ -11,6 +11,7 @@ class AiPage extends StatefulWidget {
 
 class _AiPageState extends State<AiPage> {
   void _onCreatePressed(String type) {
+    debugPrint('Pressed: $type');
     if (type == 'AI 홍보 포스터 제작') {
       Navigator.push(
         context,
@@ -29,6 +30,8 @@ class _AiPageState extends State<AiPage> {
           reverseTransitionDuration: Duration.zero,
         ),
       );
+    } else {
+      debugPrint('Unknown button pressed: $type');
     }
   }
 
@@ -47,7 +50,18 @@ class _AiPageState extends State<AiPage> {
         children: [
           SizedBox(
             height: 150,
-            child: Image.asset(imagePath, fit: BoxFit.cover),
+            child: Image.asset(
+              imagePath,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return const Center(
+                  child: Text(
+                    '이미지를 불러올 수 없습니다.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                );
+              },
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

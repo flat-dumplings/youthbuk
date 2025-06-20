@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:youthbuk/community/services/openai_api.dart';
 import 'poster_result_page.dart';
 
@@ -17,31 +18,39 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
 
-  final String openAiApiKey = 'YOUR_OPENAI_API_KEY'; // 본인 키로 교체하세요
+  late final String openAiApiKey;
+
+  @override
+  void initState() {
+    super.initState();
+    openAiApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+  }
 
   Future<void> _pickImage() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
     );
-    if (pickedFile != null)
+    if (pickedFile != null) {
       setState(() => _selectedImage = File(pickedFile.path));
+    }
   }
 
   Future<void> _createPoster() async {
     final prompt = _descriptionController.text.trim();
-    if (_selectedImage == null || prompt.isEmpty) {
+    if (prompt.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('이미지와 설명을 모두 입력해주세요')));
+      ).showSnackBar(const SnackBar(content: Text('설명을 입력해주세요')));
       return;
     }
 
     setState(() => _isLoading = true);
 
+    // 이미지 선택 여부와 상관없이 OpenAI 이미지 생성 호출
     final imageUrl = await generateImageOpenAI(
       apiKey: openAiApiKey,
       prompt: prompt,
-      size: "1024x576", // 포스터용 16:9 비율
+      size: "1792x1024",
     );
 
     setState(() => _isLoading = false);
