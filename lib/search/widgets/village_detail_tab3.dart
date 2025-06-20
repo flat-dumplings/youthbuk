@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:youthbuk/search/models/review_model.dart';
-import 'package:youthbuk/search/review_write_page.dart';
+import 'package:youthbuk/search/widgets/review_write_page.dart';
 
 class VillageDetailTab3 extends StatefulWidget {
   final String villageId;

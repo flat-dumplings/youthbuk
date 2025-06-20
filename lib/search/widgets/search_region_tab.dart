@@ -4,17 +4,17 @@ import 'package:youthbuk/search/village_list_page.dart';
 
 class SearchRegionTab extends StatelessWidget {
   final List<Map<String, String>> regionData = [
-    {"name": "청주시", "image": "assets/images/청주시.jpg"},
-    {"name": "충주시", "image": "assets/images/충주시.jpg"},
-    {"name": "제천시", "image": "assets/images/제천시.jpg"},
-    {"name": "단양군", "image": "assets/images/단양군.jpg"},
-    {"name": "보은군", "image": "assets/images/보은군.jpg"},
-    {"name": "옥천군", "image": "assets/images/옥천군.jpg"},
-    {"name": "영동군", "image": "assets/images/영동군.jpg"},
-    {"name": "증평군", "image": "assets/images/증평군.jpg"},
-    {"name": "진천군", "image": "assets/images/진천군.jpg"},
-    {"name": "괴산군", "image": "assets/images/괴산군.jpg"},
-    {"name": "음성군", "image": "assets/images/음성군.jpg"},
+    {"name": "청주시", "image": "assets/images/청주시.jpg", "review": "7"},
+    {"name": "충주시", "image": "assets/images/충주시.jpg", "review": "5"},
+    {"name": "제천시", "image": "assets/images/제천시.jpg", "review": "9"},
+    {"name": "단양군", "image": "assets/images/단양군.jpg", "review": "10"},
+    {"name": "보은군", "image": "assets/images/보은군.jpg", "review": "7"},
+    {"name": "옥천군", "image": "assets/images/옥천군.jpg", "review": "9"},
+    {"name": "영동군", "image": "assets/images/영동군.jpg", "review": "9"},
+    {"name": "증평군", "image": "assets/images/증평군.jpg", "review": "4"},
+    {"name": "진천군", "image": "assets/images/진천군.jpg", "review": "3"},
+    {"name": "괴산군", "image": "assets/images/괴산군.jpg", "review": "7"},
+    {"name": "음성군", "image": "assets/images/음성군.jpg", "review": "3"},
   ];
 
   SearchRegionTab({super.key});
@@ -97,7 +97,7 @@ class SearchRegionTab extends StatelessWidget {
                             ),
                             SizedBox(width: 4.w),
                             Text(
-                              "체험마을 : 5",
+                              "체험마을 : ${region['review']!}",
                               style: TextStyle(
                                 fontSize: 13.sp,
                                 color: Colors.brown,
