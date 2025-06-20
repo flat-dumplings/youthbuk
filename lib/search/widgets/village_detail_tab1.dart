@@ -1,206 +1,169 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:youthbuk/search/widgets/life_detail_page.dart';
 
-class VillageDetailTab1 extends StatefulWidget {
-  const VillageDetailTab1({super.key});
-
-  @override
-  State<VillageDetailTab1> createState() => _VillageDetailTab1State();
-}
-
-class _VillageDetailTab1State extends State<VillageDetailTab1> {
-  final List<DocumentSnapshot> _programs = [];
-  final ScrollController _scrollController = ScrollController();
-
-  bool _isLoading = false;
-  bool _hasMore = true;
-  DocumentSnapshot? _lastDocument;
-  List<bool> liked = [];
+class VillageDetailTab1 extends StatelessWidget {
+  const VillageDetailTab1({super.key, required this.villageId});
+  final String villageId;
 
   @override
-  void initState() {
-    super.initState();
-    liked = [];
-    _loadData(reset: true);
+  Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> mockPrograms = [
+      {
+        'name': '스탭 신청하기',
+        'imageUrl': 'assets/images/staff.jpg',
+        'tag': '스탭',
+        'totalReviewCount': 5,
+      },
+      {
+        'name': '한달 살이 / 봉사',
+        'imageUrl': 'assets/images/one_month.png',
+        'tag': '한달 살이 / 봉사',
+        'totalReviewCount': 18,
+      },
+    ];
 
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels >=
-              _scrollController.position.maxScrollExtent - 100 &&
-          !_isLoading &&
-          _hasMore) {
-        _loadData();
-      }
-    });
-  }
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: mockPrograms.length,
+        itemBuilder: (context, index) {
+          final data = mockPrograms[index];
+          final String name = data['name'] ?? '';
+          final String imageUrl = data['imageUrl'] ?? '';
+          final String tag = data['tag'] ?? '';
+          final int reviewCount = data['totalReviewCount'] ?? 0;
 
-  Future<void> _loadData({bool reset = false}) async {
-    if (_isLoading) return;
-
-    if (reset) {
-      _lastDocument = null;
-      _hasMore = true;
-      _programs.clear();
-      liked.clear();
-    }
-
-    setState(() => _isLoading = true);
-
-    Query query = FirebaseFirestore.instance
-        .collectionGroup('programs')
-        .orderBy('createdAt', descending: true)
-        .limit(10);
-
-    if (_lastDocument != null) {
-      query = query.startAfterDocument(_lastDocument!);
-    }
-
-    final snapshot = await query.get();
-
-    if (snapshot.docs.isNotEmpty) {
-      _lastDocument = snapshot.docs.last;
-      _programs.addAll(snapshot.docs);
-      liked.addAll(List.filled(snapshot.docs.length, false));
-      if (snapshot.docs.length < 10) _hasMore = false;
-    } else {
-      _hasMore = false;
-    }
-
-    setState(() => _isLoading = false);
-  }
-
-  Widget _buildProgramCard(int index) {
-    final data = _programs[index].data() as Map<String, dynamic>? ?? {};
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(30.r),
-                child:
-                    (data['imageUrl'] != null &&
-                            data['imageUrl'].toString().isNotEmpty)
-                        ? Image.network(
-                          data['imageUrl'],
-                          width: 36.w,
-                          height: 36.w,
-                          fit: BoxFit.cover,
-                        )
-                        : Image.asset(
-                          'assets/images/test.png',
-                          width: 36.w,
-                          height: 36.w,
-                          fit: BoxFit.cover,
-                        ),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: Text(
-                  data['villageName'] ?? '마을명 없음',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    liked[index] = !liked[index];
-                  });
-                },
-                child: Icon(
-                  liked[index]
-                      ? Icons.favorite
-                      : Icons.favorite_outline_rounded,
-                  size: 25.sp,
-                  color: const Color(0xFFFF6F61),
-                ),
-              ),
-              SizedBox(width: 12.w),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12.r),
-            child:
-                (data['imageUrl'] != null &&
-                        data['imageUrl'].toString().isNotEmpty)
-                    ? Image.network(
-                      data['imageUrl'],
-                      width: double.infinity,
-                      height: 160.h,
-                      fit: BoxFit.cover,
-                    )
-                    : Image.asset(
-                      'assets/images/test.png',
-                      width: double.infinity,
-                      height: 160.h,
-                      fit: BoxFit.cover,
+          return Padding(
+            padding: EdgeInsets.only(bottom: 24.h),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => LifeDetailPage()),
+                );
+              },
+              borderRadius: BorderRadius.circular(12.r),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16.r),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
                     ),
-          ),
-          SizedBox(height: 10.h),
-          Text(
-            data['name'] ?? '[프로그램명 없음]',
-            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: 6.h),
-          Text(
-            data['description'] ?? '설명 없음',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: Colors.grey.shade600,
-              height: 1.4,
-            ),
-          ),
-          SizedBox(height: 10.h),
-          Row(
-            children: [
-              Icon(Icons.comment_outlined, size: 18.sp, color: Colors.grey),
-              SizedBox(width: 4.w),
-              Text(
-                '리뷰 ${data['totalReviewCount'] ?? 0}개',
-                style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade700),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 이미지
+                    ClipRRect(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(16.r),
+                      ),
+                      child:
+                          imageUrl.isNotEmpty
+                              ? Image.asset(
+                                imageUrl,
+                                width: double.infinity,
+                                height: 200.h,
+                                fit: BoxFit.cover,
+                              )
+                              : Image.asset(
+                                'assets/images/test.png',
+                                width: double.infinity,
+                                height: 200.h,
+                                fit: BoxFit.cover,
+                              ),
+                    ),
+                    // 내용
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 8.h,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 6.h),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  _buildTag(tag, const Color(0xFFFFEBEE)),
+                                  SizedBox(width: 8.w),
+                                  Icon(
+                                    Icons.comment_outlined,
+                                    size: 14.sp,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    '$reviewCount개',
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              _buildTag(
+                                '신청하기',
+                                const Color(0xFFE3F2FD),
+                                icon: Icons.edit_calendar_outlined,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ListView.builder(
-        controller: _scrollController,
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-        itemCount: _programs.length + (_isLoading ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == _programs.length) {
-            return Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.h),
-                child: const CircularProgressIndicator(),
-              ),
-            );
-          }
-          return _buildProgramCard(index);
-        },
+  Widget _buildTag(String label, Color bgColor, {IconData? icon}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14.sp, color: Colors.black87),
+            SizedBox(width: 4.w),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

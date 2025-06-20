@@ -36,7 +36,27 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'YouthBuk',
-          theme: ThemeData(primarySwatch: Colors.blue),
+          theme: ThemeData(
+            scaffoldBackgroundColor: Colors.white, // 기본 배경색
+            primaryColor: Colors.white, // 주 색상
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.white,
+              brightness: Brightness.light,
+            ),
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black, // 아이콘/텍스트 색
+              elevation: 0,
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black, // 버튼 색상 (원하면 흰색/주황 등 설정)
+                foregroundColor: Colors.white, // 버튼 안 글자 색상
+                shape: StadiumBorder(),
+              ),
+            ),
+            useMaterial3: true,
+          ),
           routes: {
             '/login': (_) => const LoginPage(),
             '/signup': (_) => const SignupPage(),

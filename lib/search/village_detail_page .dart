@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youthbuk/search/models/village.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:youthbuk/search/widgets/village_detail_tab1.dart';
 import 'package:youthbuk/search/widgets/village_detail_tab2.dart';
 import 'package:youthbuk/search/widgets/village_detail_tab3.dart';
 
@@ -271,57 +272,74 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
                 // 마을 정보, 체험 목록, 후기 탭
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Row(
-                    children: List.generate(3, (index) {
-                      final titles = ['라이프', '체험', '후기'];
-                      final isSelected = _selectedTabIndex == index;
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Row(
+                      children: List.generate(5, (index) {
+                        // 0, 2, 4: 탭 / 1, 3: 구분선
+                        if (index % 2 == 1) {
+                          return Container(
+                            width: 1,
+                            height: 24.h,
+                            color: Colors.grey.shade300,
+                          );
+                        }
 
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedTabIndex = index;
-                              // TODO: 각 탭 클릭 시 내용 전환 원하면 이곳에 추가
-                            });
-                          },
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(vertical: 12.h),
-                                child: Text(
-                                  titles[index],
-                                  style: TextStyle(
-                                    fontSize: 14.sp,
-                                    fontWeight:
-                                        isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.w500,
+                        final tabIndex = index ~/ 2;
+                        final titles = ['라이프', '체험', '후기'];
+                        final isSelected = _selectedTabIndex == tabIndex;
+
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedTabIndex = tabIndex;
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border(
+                                  bottom: BorderSide(
                                     color:
                                         isSelected
-                                            ? Colors.black
-                                            : Colors.grey.shade600,
+                                            ? Color(0xFFFFA86A)
+                                            : Colors.transparent,
+                                    width: 3.h,
                                   ),
                                 ),
                               ),
-                              Container(
-                                height: 2.h,
-                                color:
-                                    isSelected
-                                        ? Colors.black
-                                        : Colors.transparent,
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              child: AnimatedDefaultTextStyle(
+                                duration: Duration(milliseconds: 200),
+                                style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight:
+                                      isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                  color:
+                                      isSelected
+                                          ? Color(0xFF333333)
+                                          : Colors.grey,
+                                ),
+                                child: Center(child: Text(titles[tabIndex])),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    }),
+                        );
+                      }),
+                    ),
                   ),
                 ),
+
                 SizedBox(height: 16.h),
 
                 if (_selectedTabIndex == 0) // 라이프 탭
-                  Text('라이프 탭 내용입니다')
+                  VillageDetailTab1(villageId: village.id)
                 else if (_selectedTabIndex == 1) // 체험 탭
                   VillageDetailTab2(villageId: village.id)
                 else if (_selectedTabIndex == 2) // 리뷰 탭

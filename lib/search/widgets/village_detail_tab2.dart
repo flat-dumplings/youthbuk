@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:youthbuk/search/widgets/program_detail_page.dart';
 
 class VillageDetailTab2 extends StatefulWidget {
   final String villageId;
@@ -88,7 +89,12 @@ class _VillageDetailTab2State extends State<VillageDetailTab2> {
 
     return InkWell(
       onTap: () {
-        // TODO: 상세 페이지 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProgramDetailPage(programName: name),
+          ),
+        );
       },
       borderRadius: BorderRadius.circular(12.r),
       child: Container(
