@@ -326,18 +326,21 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
             child: Column(
               children: [
                 FloatingActionButton(
+                  heroTag: null,
                   mini: true,
                   onPressed: _zoomIn,
                   child: const Icon(Icons.add),
                 ),
                 const SizedBox(height: 12),
                 FloatingActionButton(
+                  heroTag: null,
                   mini: true,
                   onPressed: _zoomOut,
                   child: const Icon(Icons.remove),
                 ),
                 const SizedBox(height: 12),
                 FloatingActionButton(
+                  heroTag: null,
                   mini: true,
                   onPressed: _goToCurrentLocation,
                   child: const Icon(Icons.my_location),
