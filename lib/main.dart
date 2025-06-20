@@ -3,10 +3,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:youthbuk/community/pages/ai_page.dart';
 
 import 'package:youthbuk/home/home_page.dart';
 import 'package:youthbuk/search/search_page.dart';
-import 'package:youthbuk/community/pages/poster_input_page.dart';
 import 'package:youthbuk/member/login_page.dart';
 import 'package:youthbuk/member/signup_page.dart';
 import 'package:youthbuk/member/profile_signup_page.dart';
@@ -134,7 +134,7 @@ class _MainPageState extends State<MainPage> {
             key: ValueKey(_searchPageInitialTabIndex), // 탭 인덱스 변경시 재빌드 유도
           ),
           AlbaMapPage(),
-          PosterInputPage(),
+          AiPage(),
           MyPage(),
         ],
       ),

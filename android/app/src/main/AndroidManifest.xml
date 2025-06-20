@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.flatdumpings.youthbuk">  <!-- 이 부분 꼭 넣어야 합니다 -->
+    package="com.flatdumpings.youthbuk">
 
   <!-- ✅ Android 13 이상 -->
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -24,12 +24,12 @@
     android:label="youthbuk"
     android:icon="@mipmap/ic_launcher"
     android:requestLegacyExternalStorage="true" 
-    android:usesCleartextTraffic="true"> <!-- 이 부분 추가 -->
+    android:usesCleartextTraffic="true">
 
-    <!-- 네이버 지도 API 키 추가 -->
+    <!-- 구글 맵 API 키 추가 -->
     <meta-data
-      android:name="com.naver.maps.map.CLIENT_ID"
-      android:value="oytgb4kt0a" />
+      android:name="com.google.android.geo.API_KEY"
+      android:value="AIzaSyA2wZ7oeefZ_gSV20nLhSyex41WAwSYD4Y" />
 
     <activity
       android:name=".MainActivity"
