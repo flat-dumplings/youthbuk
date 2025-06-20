@@ -4,17 +4,17 @@ import 'package:youthbuk/search/village_list_page.dart';
 
 class SearchRegionTab extends StatelessWidget {
   final List<Map<String, String>> regionData = [
-    {"name": "청주시", "image": "assets/images/login_logo.png"},
-    {"name": "충주시", "image": "assets/images/login_logo.png"},
-    {"name": "제천시", "image": "assets/images/login_logo.png"},
-    {"name": "단양군", "image": "assets/images/login_logo.png"},
-    {"name": "보은군", "image": "assets/images/login_logo.png"},
-    {"name": "옥천군", "image": "assets/images/login_logo.png"},
-    {"name": "영동군", "image": "assets/images/login_logo.png"},
-    {"name": "증평군", "image": "assets/images/login_logo.png"},
-    {"name": "진천군", "image": "assets/images/login_logo.png"},
-    {"name": "괴산군", "image": "assets/images/login_logo.png"},
-    {"name": "음성군", "image": "assets/images/login_logo.png"},
+    {"name": "청주시", "image": "assets/images/청주시.jpg"},
+    {"name": "충주시", "image": "assets/images/충주시.jpg"},
+    {"name": "제천시", "image": "assets/images/제천시.jpg"},
+    {"name": "단양군", "image": "assets/images/단양군.jpg"},
+    {"name": "보은군", "image": "assets/images/보은군.jpg"},
+    {"name": "옥천군", "image": "assets/images/옥천군.jpg"},
+    {"name": "영동군", "image": "assets/images/영동군.jpg"},
+    {"name": "증평군", "image": "assets/images/증평군.jpg"},
+    {"name": "진천군", "image": "assets/images/진천군.jpg"},
+    {"name": "괴산군", "image": "assets/images/괴산군.jpg"},
+    {"name": "음성군", "image": "assets/images/음성군.jpg"},
   ];
 
   SearchRegionTab({super.key});
