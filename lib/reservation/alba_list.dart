@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AlbaList extends StatelessWidget {
   final List<Map<String, dynamic>> albas;
-  final String category; // '아르바이트' or '살아보기'
+  final String category;
   final ScrollController? scrollController;
 
   const AlbaList({
@@ -14,7 +14,6 @@ class AlbaList extends StatelessWidget {
     super.key,
   });
 
-  // Timestamp -> 'yyyy년 M월 d일' 형식으로 변환, null이면 null 반환
   String? formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return null;
     DateTime date;
@@ -25,238 +24,206 @@ class AlbaList extends StatelessWidget {
     } else {
       return null;
     }
-    return DateFormat('yyyy년 M월 d일').format(date);
+    return DateFormat('yyyy.MM.dd').format(date);
   }
 
-  // 기간 필드(시작일, 종료일) 포맷팅, 없으면 null 반환
   String? formatPeriod(Map<String, dynamic>? period) {
     if (period == null) return null;
     final start = formatTimestamp(period['시작일']);
     final end = formatTimestamp(period['종료일']);
-    if (start == null && end == null) return null;
-
-    if (start != null && end != null) {
-      return '$start ~ $end';
-    }
-    if (start != null) {
-      return '시작일: $start';
-    }
-    if (end != null) {
-      return '종료일: $end';
-    }
+    if (start != null && end != null) return '$start ~ $end';
+    if (start != null) return '시작일: $start';
+    if (end != null) return '종료일: $end';
     return null;
   }
 
-  // 빈 문자열이나 null일 때 "미제공" 리턴
   String nonEmptyOrDefault(dynamic value) {
-    if (value == null) return '미제공';
-    if (value is String && value.trim().isEmpty) return '미제공';
+    if (value == null || (value is String && value.trim().isEmpty)) {
+      return '미제공';
+    }
     return value.toString();
   }
 
   @override
   Widget build(BuildContext context) {
-    // 데이터 없을 때 로딩/빈 상태 처리
     if (albas.isEmpty) {
-      return const _LoadingOrEmpty();
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search_off, size: 60, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              Text(
+                '현재 모집 중인 공고가 없습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
-    return ListView.separated(
-      controller: scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: albas.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final alba = albas[index];
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        // 상단 회색 바
+        Center(
+          child: Container(
+            width: 40,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
 
-        if (category == '아르바이트') {
-          return Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.pink.shade100,
-                      borderRadius: BorderRadius.circular(12),
+        // 리스트
+        Expanded(
+          child: ListView.separated(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            itemCount: albas.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 14),
+            itemBuilder: (context, index) {
+              final alba = albas[index];
+              final isAlba = category == '알바';
+
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.15),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
                     ),
-                    child: const Icon(
-                      Icons.work_outline,
-                      size: 50,
-                      color: Colors.pinkAccent,
+                  ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 이미지 영역
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
+                      ),
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        color: Colors.grey.shade200,
+                        child: Icon(
+                          isAlba ? Icons.work_outline : Icons.home_outlined,
+                          size: 40,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          nonEmptyOrDefault(alba['title']),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+
+                    // 텍스트 정보
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          nonEmptyOrDefault(alba['company']),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.black54,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.pink.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    isAlba ? '알바' : '살아보기',
+                                    style: TextStyle(
+                                      color: Colors.pink,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    isAlba ? '체험' : '체험',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              nonEmptyOrDefault(alba['title']),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              isAlba
+                                  ? nonEmptyOrDefault(alba['salary'])
+                                  : nonEmptyOrDefault(
+                                    formatPeriod(_safeMap(alba['운영기간'])),
+                                  ),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          '시급: ${nonEmptyOrDefault(alba['salary'])}',
-                          style: const TextStyle(
-                            color: Colors.pinkAccent,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '근무시간: ${nonEmptyOrDefault(alba['workTime'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '모집인원: ${nonEmptyOrDefault(alba['모집인원'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '마을명: ${nonEmptyOrDefault(alba['마을명'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '대표자: ${nonEmptyOrDefault(alba['대표자명'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '전화번호: ${nonEmptyOrDefault(alba['대표전화번호'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        } else if (category == '살아보기') {
-          return Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      borderRadius: BorderRadius.circular(12),
+
+                    // 찜 아이콘
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Icon(
+                        Icons.favorite_border,
+                        color: Colors.grey.shade400,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.home_outlined,
-                      size: 50,
-                      color: Colors.blueAccent,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          nonEmptyOrDefault(alba['title']),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '마을명: ${nonEmptyOrDefault(alba['마을명'])}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.black54,
-                          ),
-                        ),
-                        Text(
-                          '대표자: ${nonEmptyOrDefault(alba['대표자명'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '전화번호: ${nonEmptyOrDefault(alba['대표전화번호'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '모집인원: ${nonEmptyOrDefault(alba['모집인원'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '세부유형: ${nonEmptyOrDefault(alba['세부유형'])}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '입주가능일: ${formatTimestamp(alba['입주가능일']) ?? '미제공'}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '신청기간: ${formatPeriod(_safeMap(alba['신청기간'])) ?? '미제공'}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        Text(
-                          '운영기간: ${formatPeriod(_safeMap(alba['운영기간'])) ?? '미제공'}',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        } else {
-          return const SizedBox.shrink();
-        }
-      },
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  // null 체크용 Map 변환 헬퍼
   Map<String, dynamic>? _safeMap(dynamic value) {
-    if (value == null) return null;
     if (value is Map<String, dynamic>) return value;
     return null;
-  }
-}
-
-// 로딩 및 빈 데이터 안내 위젯
-class _LoadingOrEmpty extends StatelessWidget {
-  const _LoadingOrEmpty({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 20),
-          Text(
-            '데이터를 불러오는 중입니다...',
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -16,16 +17,20 @@ class AlbaMapPage extends StatefulWidget {
 
 class _AlbaMapPageState extends State<AlbaMapPage> {
   final Completer<GoogleMapController> _mapController = Completer();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+  bool isSheetOpen = false;
+  bool showSheet = false;
 
   List<Map<String, dynamic>> albas = [];
   List<Map<String, dynamic>> livings = [];
+  List<Map<String, dynamic>> filteredList = [];
   String selectedCategory = '전체';
 
   Position? _currentPosition;
-  LatLngBounds? _currentBounds; // 현재 지도에 보이는 영역
+  LatLngBounds? _currentBounds;
 
-  final List<String> categories = ['전체', '살아보기', '아르바이트'];
-
+  final List<String> categories = ['전체', '살아보기', '알바'];
   Set<Marker> markers = {};
 
   @override
@@ -57,11 +62,9 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
     try {
       final albaSnapshot =
           await FirebaseFirestore.instance.collectionGroup('alba').get();
-
       final tempAlbas = <Map<String, dynamic>>[];
       for (var doc in albaSnapshot.docs) {
         final data = doc.data();
-
         double? lat =
             (data['위도'] ?? data['lat'] ?? data['latitude'])?.toDouble();
         double? lng =
@@ -70,7 +73,7 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
 
         if (lat != null && lng != null) {
           tempAlbas.add({
-            'title': title ?? '아르바이트',
+            'title': title ?? '알바',
             'lat': lat,
             'lng': lng,
             'company': data['company'] ?? '',
@@ -86,11 +89,9 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
 
       final livingSnapshot =
           await FirebaseFirestore.instance.collectionGroup('living').get();
-
       final tempLivings = <Map<String, dynamic>>[];
       for (var doc in livingSnapshot.docs) {
         final data = doc.data();
-
         double? lat =
             (data['위도'] ?? data['lat'] ?? data['latitude'])?.toDouble();
         double? lng =
@@ -128,17 +129,13 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
 
   void _updateMarkers() {
     Set<Marker> newMarkers = {};
+    List<Map<String, dynamic>> dataSource =
+        selectedCategory == '살아보기'
+            ? livings
+            : selectedCategory == '알바'
+            ? albas
+            : [...albas, ...livings];
 
-    List<Map<String, dynamic>> dataSource;
-    if (selectedCategory == '살아보기') {
-      dataSource = livings;
-    } else if (selectedCategory == '아르바이트') {
-      dataSource = albas;
-    } else {
-      dataSource = [...albas, ...livings];
-    }
-
-    // 화면에 보이는 영역 기준 필터링
     if (_currentBounds != null) {
       dataSource =
           dataSource.where((pos) {
@@ -149,21 +146,18 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
     }
 
     for (var pos in dataSource) {
-      // 전체보기일 때 livings는 빨간색, albas는 파란색 마커로 구분
-      BitmapDescriptor icon;
-      if (selectedCategory == '전체') {
-        if (livings.contains(pos)) {
-          icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-        } else {
-          icon = BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueBlue,
-          );
-        }
-      } else if (selectedCategory == '살아보기') {
-        icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
-      } else {
-        icon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
-      }
+      BitmapDescriptor icon =
+          selectedCategory == '전체'
+              ? (livings.contains(pos)
+                  ? BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueRed,
+                  )
+                  : BitmapDescriptor.defaultMarkerWithHue(
+                    BitmapDescriptor.hueBlue,
+                  ))
+              : selectedCategory == '살아보기'
+              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed)
+              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
 
       newMarkers.add(
         Marker(
@@ -176,6 +170,22 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
             title: pos['title'],
             snippet: pos['company'] ?? '',
           ),
+          onTap: () {
+            setState(() {
+              filteredList = [pos];
+              showSheet = true;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_sheetController.isAttached) {
+                _sheetController.animateTo(
+                  0.45,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeIn,
+                );
+                setState(() => isSheetOpen = true);
+              }
+            });
+          },
         ),
       );
     }
@@ -188,6 +198,7 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
   void _onCategoryChanged(String category) {
     setState(() {
       selectedCategory = category;
+      filteredList.clear();
     });
     _updateMarkers();
   }
@@ -201,6 +212,12 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
     });
   }
 
+  void _onCameraMoveStarted() {
+    setState(() {
+      filteredList.clear();
+    });
+  }
+
   void _goToCurrentLocation() async {
     final controller = await _mapController.future;
     if (_currentPosition != null) {
@@ -209,12 +226,48 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
         _currentPosition!.longitude,
       );
       controller.animateCamera(CameraUpdate.newLatLngZoom(latLng, 13));
-
-      // 카메라 이동 후 영역 갱신
       final bounds = await controller.getVisibleRegion();
       setState(() {
         _currentBounds = bounds;
         _updateMarkers();
+      });
+    }
+  }
+
+  void _toggleSheet() {
+    if (_sheetController.isAttached) {
+      if (isSheetOpen) {
+        _sheetController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+        setState(() {
+          isSheetOpen = false;
+          showSheet = false;
+        });
+      } else {
+        _sheetController.animateTo(
+          0.45,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeIn,
+        );
+        setState(() {
+          isSheetOpen = true;
+          showSheet = true;
+        });
+      }
+    } else {
+      setState(() => showSheet = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_sheetController.isAttached) {
+          _sheetController.animateTo(
+            0.45,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeIn,
+          );
+          setState(() => isSheetOpen = true);
+        }
       });
     }
   }
@@ -231,43 +284,80 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
     controller.animateCamera(CameraUpdate.zoomTo(currentZoom - 1));
   }
 
+  Widget _buildMapControlButton(IconData icon, VoidCallback onPressed) {
+    return Container(
+      width: 50,
+      height: 50,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white60.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(2, 2)),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.deepOrange.shade400),
+        onPressed: onPressed,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<Map<String, dynamic>> filtered;
-    if (_currentBounds != null) {
-      if (selectedCategory == '살아보기') {
-        filtered =
-            livings.where((pos) {
-              final lat = pos['lat'] as double;
-              final lng = pos['lng'] as double;
-              return _currentBounds!.contains(LatLng(lat, lng));
-            }).toList();
-      } else if (selectedCategory == '아르바이트') {
-        filtered =
-            albas.where((pos) {
-              final lat = pos['lat'] as double;
-              final lng = pos['lng'] as double;
-              return _currentBounds!.contains(LatLng(lat, lng));
-            }).toList();
-      } else {
-        filtered =
-            [...albas, ...livings].where((pos) {
-              final lat = pos['lat'] as double;
-              final lng = pos['lng'] as double;
-              return _currentBounds!.contains(LatLng(lat, lng));
-            }).toList();
-      }
-    } else {
-      filtered =
-          selectedCategory == '전체'
-              ? [...albas, ...livings]
-              : selectedCategory == '살아보기'
-              ? livings
-              : albas;
-    }
+    final filtered =
+        filteredList.isNotEmpty
+            ? filteredList
+            : _currentBounds != null
+            ? (selectedCategory == '살아보기'
+                    ? livings
+                    : selectedCategory == '알바'
+                    ? albas
+                    : [...albas, ...livings])
+                .where((pos) {
+                  final lat = pos['lat'] as double;
+                  final lng = pos['lng'] as double;
+                  return _currentBounds!.contains(LatLng(lat, lng));
+                })
+                .toList()
+            : (selectedCategory == '전체'
+                ? [...albas, ...livings]
+                : selectedCategory == '살아보기'
+                ? livings
+                : albas);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('알바 지도 - 구글 맵 (Firestore)')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Image.asset('assets/images/logo_3d.png', width: 30, height: 30),
+                const SizedBox(width: 6),
+                const Text(
+                  '청춘북',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 19,
+                  ),
+                ),
+              ],
+            ),
+            const Text(
+              '알바 / 살아보기 지도',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Stack(
         children: [
           GoogleMap(
@@ -278,14 +368,24 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
                         _currentPosition!.latitude,
                         _currentPosition!.longitude,
                       )
-                      : const LatLng(36.6244, 127.3034), // 오송역 기본 좌표
+                      : const LatLng(36.6244, 127.3034),
               zoom: 13,
             ),
             markers: markers,
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
+            zoomControlsEnabled: false,
             onMapCreated: (controller) => _mapController.complete(controller),
             onCameraMove: _onCameraMove,
+            onCameraMoveStarted: _onCameraMoveStarted,
+            onTap: (_) {
+              if (filteredList.length == 1) {
+                setState(() {
+                  filteredList.clear();
+                  _updateMarkers();
+                });
+              }
+            },
           ),
           Positioned(
             top: 16,
@@ -297,55 +397,84 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
               onCategorySelected: _onCategoryChanged,
             ),
           ),
-          DraggableScrollableSheet(
-            initialChildSize: 0.45,
-            minChildSize: 0.1,
-            maxChildSize: 0.9,
-            builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
+          if (showSheet)
+            DraggableScrollableSheet(
+              controller: _sheetController,
+              initialChildSize: 0.45,
+              minChildSize: 0.1,
+              maxChildSize: 0.9,
+              builder: (context, scrollController) {
+                return NotificationListener<DraggableScrollableNotification>(
+                  onNotification: (notification) {
+                    if (notification.extent <= 0.12 && isSheetOpen) {
+                      _toggleSheet();
+                    }
+                    return false;
+                  },
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black26, blurRadius: 12),
+                      ],
+                    ),
+                    child: AlbaList(
+                      albas: filtered,
+                      scrollController: scrollController,
+                      category: selectedCategory == '알바' ? '알바' : '살아보기',
+                    ),
                   ),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 12),
-                  ],
+                );
+              },
+            ),
+          Positioned(
+            bottom: 24,
+            left: 12,
+            child: Column(
+              children: [
+                _buildMapControlButton(Icons.add, _zoomIn),
+                _buildMapControlButton(Icons.remove, _zoomOut),
+                const SizedBox(height: 12),
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: Offset(2, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.my_location, color: Colors.orange),
+                    onPressed: _goToCurrentLocation,
+                  ),
                 ),
-                child: AlbaList(
-                  albas: filtered,
-                  scrollController: scrollController,
-                  category: selectedCategory == '아르바이트' ? '아르바이트' : '살아보기',
-                ),
-              );
-            },
+              ],
+            ),
           ),
           Positioned(
             bottom: 24,
             right: 12,
-            child: Column(
-              children: [
-                FloatingActionButton(
-                  heroTag: null,
-                  mini: true,
-                  onPressed: _zoomIn,
-                  child: const Icon(Icons.add),
+            child: ElevatedButton.icon(
+              onPressed: _toggleSheet,
+              icon: Icon(showSheet ? Icons.map : Icons.list),
+              label: Text(showSheet ? '지도보기' : '목록보기'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                const SizedBox(height: 12),
-                FloatingActionButton(
-                  heroTag: null,
-                  mini: true,
-                  onPressed: _zoomOut,
-                  child: const Icon(Icons.remove),
-                ),
-                const SizedBox(height: 12),
-                FloatingActionButton(
-                  heroTag: null,
-                  mini: true,
-                  onPressed: _goToCurrentLocation,
-                  child: const Icon(Icons.my_location),
-                ),
-              ],
+                elevation: 4,
+              ),
             ),
           ),
         ],
