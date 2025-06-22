@@ -14,6 +14,7 @@ class CharacterCreatePage extends StatefulWidget {
 
 class _CharacterCreatePageState extends State<CharacterCreatePage> {
   File? _selectedImage;
+  File? _maskImage; // 마스크 이미지 추가
   final TextEditingController _descriptionController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
@@ -35,7 +36,22 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
     }
   }
 
+  Future<void> _pickMaskImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+    if (pickedFile != null) {
+      setState(() => _maskImage = File(pickedFile.path));
+    }
+  }
+
   Future<void> _createCharacter() async {
+    if (_selectedImage == null || _maskImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('원본 이미지와 마스크 이미지를 모두 선택해주세요')),
+      );
+      return;
+    }
     final prompt = _descriptionController.text.trim();
     if (prompt.isEmpty) {
       ScaffoldMessenger.of(
@@ -46,8 +62,10 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
 
     setState(() => _isLoading = true);
 
-    final imageUrl = await generateImageOpenAI(
+    final imageUrl = await generateImageInpainting(
       apiKey: openAiApiKey,
+      image: _selectedImage!,
+      mask: _maskImage!,
       prompt: prompt,
       size: "1024x1024",
     );
@@ -69,51 +87,54 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
     }
   }
 
+  Widget _buildImagePreview(File? image, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          image:
+              image != null
+                  ? DecorationImage(image: FileImage(image), fit: BoxFit.cover)
+                  : null,
+        ),
+        child:
+            image == null
+                ? Center(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )
+                : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('마을만의 캐릭터 만들기')),
+      appBar: AppBar(title: const Text('마을만의 캐릭터 만들기 (인페인팅)')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
           children: [
-            GestureDetector(
-              onTap: _pickImage,
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  image:
-                      _selectedImage != null
-                          ? DecorationImage(
-                            image: FileImage(_selectedImage!),
-                            fit: BoxFit.cover,
-                          )
-                          : null,
-                ),
-                child:
-                    _selectedImage == null
-                        ? const Center(
-                          child: Text(
-                            '이미지 선택 (탭)',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        )
-                        : null,
-              ),
-            ),
+            _buildImagePreview(_selectedImage, '원본 이미지 선택 (탭)', _pickImage),
+            const SizedBox(height: 16),
+            _buildImagePreview(_maskImage, '마스크 이미지 선택 (탭)', _pickMaskImage),
             const SizedBox(height: 32),
             TextField(
               controller: _descriptionController,

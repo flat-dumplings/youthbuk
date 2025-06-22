@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'poster_create_page.dart';
 import 'character_create_page.dart';
+// TODO: 아래 파일은 상세페이지 생성용 새 페이지 연결
+import 'detail_create_page.dart';
 
 class AiPage extends StatefulWidget {
   const AiPage({super.key});
@@ -26,6 +28,15 @@ class _AiPageState extends State<AiPage> {
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const CharacterCreatePage(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+      );
+    } else if (type == 'AI 상세페이지 제작') {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const DetailCreatePage(), // 여기에 새 페이지 연결
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero,
         ),
@@ -117,6 +128,11 @@ class _AiPageState extends State<AiPage> {
             _buildCard(
               imagePath: 'assets/images/character_poster.png',
               title: '마을만의 캐릭터 제작',
+              costText: '비용 : 1회 1000원',
+            ),
+            _buildCard(
+              imagePath: 'assets/images/character_poster.png', // 새 이미지 경로 필요
+              title: 'AI 상세페이지 제작',
               costText: '비용 : 1회 1000원',
             ),
           ],
