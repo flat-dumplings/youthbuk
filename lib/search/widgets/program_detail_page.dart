@@ -86,7 +86,7 @@ class _ProgramDetailPageState extends State<ProgramDetailPage> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20.r),
-                      child: Image.network(
+                      child: Image.asset(
                         data['titlePhoto'] ?? '',
                         height: 200.h,
                         width: double.infinity,
@@ -189,7 +189,7 @@ class _ProgramDetailPageState extends State<ProgramDetailPage> {
                           padding: EdgeInsets.only(bottom: 12.h),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16.r),
-                            child: Image.network(
+                            child: Image.asset(
                               url,
                               width: double.infinity,
                               height: 200.h,

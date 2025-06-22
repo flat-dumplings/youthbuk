@@ -271,16 +271,16 @@ class _SearchActivityTabState extends State<SearchActivityTab> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(30.r),
                   child:
-                      (data['imageUrl'] != null &&
-                              data['imageUrl'].toString().isNotEmpty)
-                          ? Image.network(
-                            data['imageUrl'],
+                      (data['titlePhoto'] != null &&
+                              data['titlePhoto'].toString().isNotEmpty)
+                          ? Image.asset(
+                            data['titlePhoto'],
                             width: 36.w,
                             height: 36.w,
                             fit: BoxFit.cover,
                           )
                           : Image.asset(
-                            'assets/images/test.png',
+                            'assets/images/default.png',
                             width: 36.w,
                             height: 36.w,
                             fit: BoxFit.cover,
@@ -323,16 +323,16 @@ class _SearchActivityTabState extends State<SearchActivityTab> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12.r),
               child:
-                  (data['imageUrl'] != null &&
-                          data['imageUrl'].toString().isNotEmpty)
-                      ? Image.network(
-                        data['imageUrl'],
+                  (data['titlePhoto'] != null &&
+                          data['titlePhoto'].toString().isNotEmpty)
+                      ? Image.asset(
+                        data['titlePhoto'],
                         width: double.infinity,
                         height: 160.h,
                         fit: BoxFit.cover,
                       )
                       : Image.asset(
-                        'assets/images/test.png',
+                        'assets/images/default.png',
                         width: double.infinity,
                         height: 160.h,
                         fit: BoxFit.cover,

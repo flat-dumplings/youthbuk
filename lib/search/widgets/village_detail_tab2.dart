@@ -81,7 +81,7 @@ class _VillageDetailTab2State extends State<VillageDetailTab2> {
   Widget _buildProgramCard(int index) {
     final data = _programs[index].data() as Map<String, dynamic>? ?? {};
 
-    final String imageUrl = data['imageUrl']?.toString() ?? '';
+    final String imageUrl = data['titlePhoto']?.toString() ?? '';
     final String name = data['name'] ?? '[프로그램명 없음]';
     final int price = data['price'] ?? 0;
     final formattedPrice = NumberFormat.decimalPattern().format(price);
@@ -122,16 +122,16 @@ class _VillageDetailTab2State extends State<VillageDetailTab2> {
                   ),
                   child:
                       imageUrl.isNotEmpty
-                          ? Image.network(
+                          ? Image.asset(
                             imageUrl,
                             width: double.infinity,
-                            height: 140.h,
+                            height: 200.h,
                             fit: BoxFit.cover,
                           )
                           : Image.asset(
                             'assets/images/test.png',
                             width: double.infinity,
-                            height: 140.h,
+                            height: 200.h,
                             fit: BoxFit.cover,
                           ),
                 ),

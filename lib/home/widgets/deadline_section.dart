@@ -69,7 +69,7 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                 return {
                   'title': data['name'] ?? '이름 없음',
                   'company': data['villageName'] ?? '마을명 없음',
-                  'imagePath': data['titlePhoto'], // 여기에선 검증 안함
+                  'titlePhoto': data['titlePhoto'],
                   'deadline': (data['endDate'] as Timestamp).toDate(),
                   'region': data['region'] ?? '지역 정보 없음',
                   'latitude': data['latitude'],
@@ -145,10 +145,8 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                     );
                   }
 
-                  final imagePath = data['imagePath'];
-                  final isValidUrl =
-                      imagePath != null &&
-                      imagePath.toString().startsWith('http');
+                  final imagePath =
+                      data['titlePhoto'] ?? 'assets/images/default.png';
 
                   return Container(
                     width: 180.w,
@@ -172,27 +170,22 @@ class _DeadlineSectionState extends State<DeadlineSection> {
                           ),
                           child: Stack(
                             children: [
-                              isValidUrl
-                                  ? Image.network(
-                                    imagePath,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: 150.h,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Image.asset(
-                                        'assets/images/default.png',
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        height: 150.h,
-                                      );
-                                    },
-                                  )
-                                  : Image.asset(
+                              Image.asset(
+                                (imagePath.isNotEmpty)
+                                    ? imagePath
+                                    : 'assets/images/default.png',
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: 150.h,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.asset(
                                     'assets/images/default.png',
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     height: 150.h,
-                                  ),
+                                  );
+                                },
+                              ),
                               Positioned.fill(
                                 child: Container(
                                   decoration: const BoxDecoration(

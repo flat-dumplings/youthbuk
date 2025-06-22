@@ -186,7 +186,7 @@ class _VillageListPageState extends State<VillageListPage> {
                                   child:
                                       v.photoUrls != null &&
                                               v.photoUrls!.isNotEmpty
-                                          ? Image.network(
+                                          ? Image.asset(
                                             v.photoUrls!.first,
                                             width: 36.w,
                                             height: 36.w,
@@ -250,15 +250,15 @@ class _VillageListPageState extends State<VillageListPage> {
                               borderRadius: BorderRadius.circular(12.r),
                               child:
                                   v.photoUrls != null && v.photoUrls!.isNotEmpty
-                                      ? Image.network(
+                                      ? Image.asset(
                                         v.photoUrls!.first,
                                         width: double.infinity,
-                                        height: 160.h,
+                                        height: 200.h,
                                         fit: BoxFit.cover,
                                         errorBuilder:
                                             (c, e, s) => Container(
                                               width: double.infinity,
-                                              height: 160.h,
+                                              height: 200.h,
                                               color: Colors.grey.shade200,
                                               child: const Icon(
                                                 Icons.broken_image,

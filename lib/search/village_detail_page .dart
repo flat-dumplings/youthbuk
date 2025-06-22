@@ -86,7 +86,7 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child:
                       (firstImageUrl != null)
-                          ? Image.network(
+                          ? Image.asset(
                             firstImageUrl,
                             width: double.infinity,
                             height: 200.h,
@@ -170,23 +170,6 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
                 ),
                 SizedBox(height: 16.h),
 
-                // 지도 들어갈 곳
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Container(
-                    height: 120.h,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12.r),
-                      color: Colors.grey.shade200,
-                    ),
-                    child: Center(
-                      child: Text(
-                        village.address ?? '지도 정보 없음',
-                        style: TextStyle(fontSize: 14.sp),
-                      ),
-                    ),
-                  ),
-                ),
                 SizedBox(height: 30.h),
 
                 // 마을 정보
@@ -214,6 +197,13 @@ class _VillageDetailPageState extends State<VillageDetailPage> {
                         label: '홈페이지',
                         content: village.homepage ?? '홈페이지 정보가 없습니다.',
                         iconColor: Colors.redAccent,
+                      ),
+                      SizedBox(height: 10.h),
+                      _infoRow(
+                        icon: Icons.maps_home_work,
+                        label: '위치',
+                        content: village.address ?? '위치 정보가 없습니다.',
+                        iconColor: Colors.deepPurpleAccent,
                       ),
                     ],
                   ),

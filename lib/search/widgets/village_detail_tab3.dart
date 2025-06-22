@@ -391,7 +391,7 @@ class _VillageDetailTab3State extends State<VillageDetailTab3> {
                     padding: EdgeInsets.symmetric(horizontal: 4.w),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.r),
-                      child: Image.network(
+                      child: Image.asset(
                         images[index],
                         fit: BoxFit.cover,
                         errorBuilder:
@@ -465,7 +465,7 @@ class _ImageGalleryPage extends StatelessWidget {
             itemCount: images.length,
             itemBuilder:
                 (_, index) => InteractiveViewer(
-                  child: Image.network(
+                  child: Image.asset(
                     images[index],
                     fit: BoxFit.contain,
                     errorBuilder:
