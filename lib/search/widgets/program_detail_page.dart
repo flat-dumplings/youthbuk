@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:youthbuk/pay/cartpage.dart';
 
 class ProgramDetailPage extends StatefulWidget {
   final String programName;
@@ -532,7 +533,10 @@ void showCartCompleteDialog(BuildContext context) {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        // TODO: 장바구니로 이동
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => CartPage()),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFFFFA86A),

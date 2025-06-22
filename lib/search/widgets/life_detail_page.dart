@@ -11,6 +11,15 @@ class LifeDetailPage extends StatefulWidget {
 class _LifeDetailPageState extends State<LifeDetailPage> {
   bool isLiked = false;
 
+  // 예시 이력서 리스트
+  final List<String> resumeList = ['이력서 1 - 경력직', '이력서 2 - 신입', '이력서 3 - 프리랜서'];
+
+  // 선택된 이력서 상태
+  final Set<String> selectedResumes = {};
+
+  // 지원 완료 여부
+  bool _hasApplied = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,6 +42,7 @@ class _LifeDetailPageState extends State<LifeDetailPage> {
         ),
       ),
       body: ListView(
+        padding: EdgeInsets.only(bottom: 90.h), // 버튼 공간 확보
         children: [
           // 상단 이미지
           SizedBox(
@@ -126,6 +136,151 @@ class _LifeDetailPageState extends State<LifeDetailPage> {
           ),
         ],
       ),
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  // 전화문의 클릭 시 처리할 코드
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+                child: Text(
+                  '전화문의',
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: ElevatedButton(
+                onPressed:
+                    _hasApplied
+                        ? null
+                        : () {
+                          _showResumeSelectionDialog();
+                        },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      _hasApplied ? Colors.grey : Colors.orangeAccent,
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+                child: Text(
+                  _hasApplied ? '지원완료' : '지원하기',
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showResumeSelectionDialog() {
+    selectedResumes.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text('지원할 이력서를 선택해주세요'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children:
+                      resumeList.map((resume) {
+                        final selected = selectedResumes.contains(resume);
+                        return CheckboxListTile(
+                          title: Text(resume),
+                          value: selected,
+                          onChanged: (checked) {
+                            setStateDialog(() {
+                              if (checked == true) {
+                                selectedResumes.add(resume);
+                              } else {
+                                selectedResumes.remove(resume);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('취소'),
+                ),
+                ElevatedButton(
+                  onPressed:
+                      selectedResumes.isNotEmpty
+                          ? () {
+                            Navigator.pop(context);
+                            _showApplyCompleteDialog();
+                          }
+                          : null,
+                  child: const Text('지원하기'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showApplyCompleteDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('지원 완료'),
+          content: Text('선택한 이력서 ${selectedResumes.length}개로 지원이 완료되었습니다.'),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  _hasApplied = true;
+                });
+              },
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -190,13 +345,13 @@ class _LifeDetailPageState extends State<LifeDetailPage> {
       margin: EdgeInsets.only(top: 14.h),
       padding: EdgeInsets.all(18.w),
       decoration: BoxDecoration(
-        color: Color(0xFFF7F9FB),
+        color: const Color(0xFFF7F9FB),
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.08),
             blurRadius: 8,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -211,7 +366,7 @@ class _LifeDetailPageState extends State<LifeDetailPage> {
                 name,
                 style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold),
               ),
-              Spacer(),
+              const Spacer(),
               Text(date, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
             ],
           ),

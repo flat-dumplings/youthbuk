@@ -1,4 +1,3 @@
-// openai_api.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -6,7 +5,7 @@ Future<String?> generateImageOpenAI({
   required String apiKey,
   required String prompt,
   int n = 1,
-  String size = "512x512",
+  String size = "1024x1024",
 }) async {
   final url = Uri.parse("https://api.openai.com/v1/images/generations");
 
@@ -15,9 +14,13 @@ Future<String?> generateImageOpenAI({
     'Authorization': 'Bearer $apiKey',
   };
 
+  // 텍스트 포함 안 하도록 부정 조건 추가
+  final modifiedPrompt =
+      "$prompt, no text, no letters, no words, no characters";
+
   final body = jsonEncode({
     "model": "dall-e-3",
-    "prompt": prompt,
+    "prompt": modifiedPrompt,
     "n": n,
     "size": size,
   });
