@@ -164,7 +164,7 @@ class _MainPageState extends State<MainPage> {
                 Icons.home,
                 Icons.explore,
                 Icons.calendar_today,
-                Icons.chat_bubble,
+                Icons.add_a_photo_rounded,
                 Icons.person,
               ];
               final outlines = [

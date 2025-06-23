@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:youthbuk/community/pages/character_result_page.dart';
-import 'package:youthbuk/community/services/openai_api.dart'; // generateImageFromText 함수
+import 'package:youthbuk/community/services/openai_api.dart';
 
 class CharacterCreatePage extends StatefulWidget {
   const CharacterCreatePage({super.key});
@@ -37,7 +37,7 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
     "superhero character",
     "minimalist style character",
     "retro pixel art character",
-    "", // 직접 입력일 때는 빈 문자열
+    "",
   ];
 
   String? _selectedTypeKR;
@@ -59,16 +59,12 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
             ? _customTypeController.text.trim()
             : _characterTypesEN[_characterTypesKR.indexOf(_selectedTypeKR!)];
 
-    if (userPrompt.isEmpty) {
+    if (userPrompt.isEmpty || characterTypeEN.isEmpty) {
+      final message =
+          userPrompt.isEmpty ? '캐릭터 설명을 입력해주세요' : '캐릭터 유형을 입력하거나 선택해주세요';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('캐릭터 설명을 입력해주세요')));
-      return;
-    }
-    if (characterTypeEN.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('캐릭터 유형을 입력하거나 선택해주세요')));
+      ).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
@@ -111,109 +107,121 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
     final showCustomInput = _selectedTypeKR == "직접 입력...";
 
     return Scaffold(
-      appBar: AppBar(title: const Text('캐릭터 생성기')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('AI 캐릭터 생성기'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      backgroundColor: const Color(0xFFF4F5F7),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DropdownButtonFormField<String>(
-                value: _selectedTypeKR,
-                items:
-                    _characterTypesKR
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTypeKR = value;
-                    if (value != "직접 입력...") {
-                      _customTypeController.clear();
-                    }
-                  });
-                },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              "캐릭터 스타일",
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              value: _selectedTypeKR,
+              items:
+                  _characterTypesKR
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedTypeKR = value;
+                  if (value != "직접 입력...") {
+                    _customTypeController.clear();
+                  }
+                });
+              },
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[100],
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+            ),
+            if (showCustomInput) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _customTypeController,
                 decoration: InputDecoration(
-                  labelText: "캐릭터 유형 선택",
+                  labelText: "직접 입력",
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
                   fillColor: Colors.grey[100],
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-              ),
-              if (showCustomInput) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _customTypeController,
-                  decoration: InputDecoration(
-                    labelText: "캐릭터 유형 직접 입력",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              TextField(
-                controller: _descriptionController,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: '캐릭터 설명을 입력하세요',
-                  filled: true,
-                  fillColor: Colors.grey[100],
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _createCharacter,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.shade300,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    elevation: 4,
-                    shadowColor: Colors.purpleAccent.withOpacity(0.4),
-                  ),
-                  child:
-                      _isLoading
-                          ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              color: Colors.white,
-                            ),
-                          )
-                          : const Text(
-                            '캐릭터 생성하기',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
                 ),
               ),
             ],
-          ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _descriptionController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: '캐릭터 설명을 입력하세요',
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _createCharacter,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurpleAccent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 3,
+                ),
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Text(
+                          '캐릭터 생성하기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+              ),
+            ),
+          ],
         ),
       ),
     );

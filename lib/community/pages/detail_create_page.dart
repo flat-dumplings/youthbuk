@@ -28,7 +28,6 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
 
   File? backgroundImageFile; // 유저가 직접 선택한 배경 이미지 파일
 
-  // 요일 선택 상태 (월~일)
   final Map<String, bool> weekdaySelected = {
     '월': false,
     '화': false,
@@ -63,11 +62,10 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
   }
 
   String _buildSelectedWeekdaysString() {
-    String days = weekdaySelected.entries
-        .where((entry) => entry.value)
+    return weekdaySelected.entries
+        .where((e) => e.value)
         .map((e) => e.key)
         .join('');
-    return days.isEmpty ? '' : days;
   }
 
   String _getSelectedPeriod() {
@@ -120,261 +118,6 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
     return await uploadTask.ref.getDownloadURL();
   }
 
-  Future<String> _generateImageWithDallE(String prompt) async {
-    final response = await http.post(
-      Uri.parse('https://api.openai.com/v1/images/generations'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${dotenv.env['OPENAI_API_KEY']}',
-      },
-      body: jsonEncode({
-        'model': 'dall-e-3',
-        'prompt': prompt,
-        'n': 1,
-        'size': '1024x1024',
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('DALL·E 이미지 생성 실패: ${response.body}');
-    }
-
-    final data = jsonDecode(response.body);
-    return data['data'][0]['url'];
-  }
-
-  Future<void> _generateDetailPage() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    final period = _getSelectedPeriod();
-    final weekdays = _buildSelectedWeekdaysString();
-
-    try {
-      String generatedImageUrl = '';
-
-      if (backgroundImageFile != null) {
-        // 유저가 직접 선택한 배경 이미지가 있으면 업로드 후 URL 사용
-        generatedImageUrl = await _uploadFileToFirebase(
-          backgroundImageFile!,
-          'backgrounds',
-        );
-      } else {
-        // AI 이미지 생성
-        final posterPrompt =
-            '${titleController.text} rural village landscape, minimalistic, soft pastel colors, simple background without text or people, clean and clear for overlay text';
-        generatedImageUrl = await _generateImageWithDallE(posterPrompt);
-      }
-
-      // Claude API에 보낼 메시지 (배경 이미지 URL 포함)
-      final userMessage = '''
-체험명: ${titleController.text}
-마을명: ${villageController.text}
-비용: ${priceController.text}
-기간: $period
-가능 요일: $weekdays
-인원: ${peopleController.text}
-
-다음 정보를 JSON 형식으로 정확하게 key와 value 쌍으로만 만들어줘:
-{
-  "main_title": "",
-  "info_price": "",
-  "info_time": "",
-  "info_participants": "",
-  "refund_policy": "",
-  "extra_comment": "",
-  "village_name": "",
-  "promo_message": "",
-  "possible_days": "$weekdays",
-  "background_image_url": "$generatedImageUrl"
-}
-''';
-
-      final response = await http.post(
-        Uri.parse("https://api.anthropic.com/v1/messages"),
-        headers: {
-          "x-api-key": dotenv.env['CLAUDE_API_KEY'] ?? '',
-          "Content-Type": "application/json",
-          "anthropic-version": "2023-06-01",
-        },
-        body: jsonEncode({
-          "model": "claude-3-opus-20240229",
-          "messages": [
-            {"role": "user", "content": userMessage},
-          ],
-          "max_tokens": 700,
-          "temperature": 0.7,
-        }),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Claude API 요청 실패: ${response.body}');
-      }
-
-      final utf8Body = utf8.decode(response.bodyBytes);
-      final data = jsonDecode(utf8Body);
-      final completionText = data['content']?[0]?['text'] as String? ?? '';
-
-      Map<String, dynamic> jsonResult = {};
-      try {
-        jsonResult = jsonDecode(completionText);
-      } catch (_) {
-        jsonResult = {};
-      }
-
-      final result = <String, dynamic>{
-        'main_title': jsonResult['main_title']?.toString() ?? '',
-        'info_price': jsonResult['info_price']?.toString() ?? '',
-        'info_time': jsonResult['info_time']?.toString() ?? '',
-        'info_participants': jsonResult['info_participants']?.toString() ?? '',
-        'refund_policy': jsonResult['refund_policy']?.toString() ?? '',
-        'extra_comment': jsonResult['extra_comment']?.toString() ?? '',
-        'village_name': jsonResult['village_name']?.toString() ?? '',
-        'promo_message': jsonResult['promo_message']?.toString() ?? '',
-        'possible_days': jsonResult['possible_days']?.toString() ?? weekdays,
-        'background_image_url': generatedImageUrl,
-      };
-
-      result['poster_url'] = generatedImageUrl;
-
-      final galleryImageUrls =
-          selectedImages.isNotEmpty
-              ? await Future.wait(
-                selectedImages.map(
-                  (file) => _uploadFileToFirebase(file, 'gallery'),
-                ),
-              )
-              : [generatedImageUrl];
-
-      setState(() {
-        aiData = result;
-        isLoading = false;
-      });
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => ExperiencePreviewPage(
-                aiData: result,
-                mainImageUrl: generatedImageUrl,
-                galleryImageUrls: galleryImageUrls,
-              ),
-        ),
-      );
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('오류 발생: $e')));
-    }
-  }
-
-  Widget _buildInputField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPeriodSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('기간 선택', style: TextStyle(fontSize: 16)),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: _selectDateRange,
-          icon: const Icon(Icons.calendar_month_outlined),
-          label: Text(
-            selectedDateRange == null
-                ? '날짜 범위 선택'
-                : '${selectedDateRange!.start.year}.${selectedDateRange!.start.month}.${selectedDateRange!.start.day} ~ '
-                    '${selectedDateRange!.end.year}.${selectedDateRange!.end.month}.${selectedDateRange!.end.day}',
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text('가능 요일 선택', style: TextStyle(fontSize: 16)),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    weekdaySelected.values.every((v) => v)
-                        ? Colors.deepOrange.shade400
-                        : null,
-              ),
-              onPressed:
-                  () => _toggleAll(!weekdaySelected.values.every((v) => v)),
-              child: const Text('전체'),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    weekdaySelected['토'] == true && weekdaySelected['일'] == true
-                        ? Colors.deepOrange.shade400
-                        : null,
-              ),
-              onPressed: _toggleWeekend,
-              child: const Text('주말'),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    weekdaySelected.entries
-                            .where(
-                              (e) => ['월', '화', '수', '목', '금'].contains(e.key),
-                            )
-                            .every((e) => e.value)
-                        ? Colors.deepOrange.shade400
-                        : null,
-              ),
-              onPressed: _toggleWeekday,
-              child: const Text('평일'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          children:
-              weekdaySelected.keys.map((day) {
-                final selected = weekdaySelected[day]!;
-                return FilterChip(
-                  label: Text(day),
-                  selected: selected,
-                  showCheckmark: false,
-                  selectedColor: Colors.deepOrange.shade200,
-                  onSelected: (bool value) {
-                    setState(() {
-                      weekdaySelected[day] = value;
-                    });
-                  },
-                  labelStyle: TextStyle(
-                    color: selected ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  backgroundColor: Colors.grey.shade200,
-                );
-              }).toList(),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -391,28 +134,42 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
             const SizedBox(height: 16),
             _buildPeriodSelector(),
             const SizedBox(height: 16),
-
-            // 배경 이미지 직접 선택 버튼 및 미리보기
             ElevatedButton.icon(
               onPressed: _pickBackgroundImage,
               icon: const Icon(Icons.image_outlined),
               label: const Text('배경 이미지 직접 선택'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade100,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             if (backgroundImageFile != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 16),
-                child: Image.file(
-                  backgroundImageFile!,
-                  width: double.infinity,
-                  height: 150,
-                  fit: BoxFit.cover,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    backgroundImageFile!,
+                    width: double.infinity,
+                    height: 150,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-
             ElevatedButton.icon(
               onPressed: _pickImages,
               icon: const Icon(Icons.photo_library_outlined),
               label: const Text('체험 사진 선택 (최대 4장)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange.shade100,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -422,11 +179,14 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
                   selectedImages
                       .take(4)
                       .map(
-                        (file) => Image.file(
-                          file,
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
+                        (file) => ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            file,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       )
                       .toList(),
@@ -434,7 +194,18 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
             const SizedBox(height: 20),
             Center(
               child: ElevatedButton(
-                onPressed: isLoading ? null : _generateDetailPage,
+                onPressed: isLoading ? null : () {},
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 14,
+                  ),
+                  backgroundColor: Colors.deepOrange.shade200,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
                 child:
                     isLoading
                         ? const SizedBox(
@@ -448,6 +219,120 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInputField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPeriodSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '기간 선택',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange.shade100,
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: _selectDateRange,
+          icon: const Icon(Icons.calendar_month_outlined),
+          label: Text(
+            selectedDateRange == null
+                ? '날짜 범위 선택'
+                : '${selectedDateRange!.start.year}.${selectedDateRange!.start.month}.${selectedDateRange!.start.day} ~ '
+                    '${selectedDateRange!.end.year}.${selectedDateRange!.end.month}.${selectedDateRange!.end.day}',
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          '가능 요일 선택',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            ElevatedButton(
+              onPressed:
+                  () => _toggleAll(!weekdaySelected.values.every((v) => v)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade100,
+                foregroundColor: Colors.black87,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('전체'),
+            ),
+            ElevatedButton(
+              onPressed: _toggleWeekend,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade100,
+                foregroundColor: Colors.black87,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('주말'),
+            ),
+            ElevatedButton(
+              onPressed: _toggleWeekday,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade100,
+                foregroundColor: Colors.black87,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('평일'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          children:
+              weekdaySelected.keys.map((day) {
+                final selected = weekdaySelected[day]!;
+                return FilterChip(
+                  label: Text(day),
+                  selected: selected,
+                  showCheckmark: false,
+                  selectedColor: Colors.orange.shade300,
+                  backgroundColor: Colors.grey.shade200,
+                  onSelected: (bool value) {
+                    setState(() {
+                      weekdaySelected[day] = value;
+                    });
+                  },
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              }).toList(),
+        ),
+      ],
     );
   }
 }

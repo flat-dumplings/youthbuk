@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import 'poster_result_page.dart'; // 결과 화면
-import 'package:youthbuk/community/services/openai_api.dart'; // generateImageFromText 함수
+import 'poster_result_page.dart';
+import 'package:youthbuk/community/services/openai_api.dart';
 
 class PosterCreatePage extends StatefulWidget {
   const PosterCreatePage({super.key});
@@ -21,7 +20,6 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
   bool _isLoading = false;
   late final String openAiApiKey;
 
-  // 캐릭터 스타일 리스트 (한글) + 직접 입력 옵션 추가
   final List<String> _characterStylesKR = [
     "애니메이션 캐릭터",
     "귀여운 캐릭터",
@@ -33,7 +31,6 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
     "직접 입력...",
   ];
 
-  // 영어 프롬프트 (AI 생성용), 직접입력은 빈 문자열으로 둠
   final List<String> _characterStylesEN = [
     "bright and cute animated character",
     "cute cartoon style character",
@@ -42,10 +39,9 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
     "superhero character",
     "minimalist style character",
     "retro pixel art character",
-    "", // 직접 입력일 경우 빈 문자열
+    "",
   ];
 
-  // 포스터 스타일 리스트 (한글) + 직접 입력 옵션 추가
   final List<String> _posterStylesKR = [
     "감성 스타일",
     "모던 스타일",
@@ -55,14 +51,13 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
     "직접 입력...",
   ];
 
-  // 영어 프롬프트 스타일 (AI 생성용)
   final List<String> _posterStylesEN = [
     "emotional style",
     "modern style",
     "retro style",
     "minimal style",
     "colorful style",
-    "", // 직접 입력일 경우 빈 문자열
+    "",
   ];
 
   String? _selectedCharacterKR;
@@ -72,18 +67,12 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
   void initState() {
     super.initState();
     openAiApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
-
     _selectedCharacterKR = _characterStylesKR.first;
     _selectedPosterKR = _posterStylesKR.first;
-
-    _characterStyleInputController.text = "";
-    _posterStyleInputController.text = "";
   }
 
   Future<void> _createPoster() async {
     final userPrompt = _descriptionController.text.trim();
-
-    // 캐릭터 스타일: 직접입력일 경우 입력창 값, 아니면 리스트 매칭 값
     final isCharacterCustom = _selectedCharacterKR == "직접 입력...";
     final characterStyle =
         isCharacterCustom
@@ -92,29 +81,16 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
               _selectedCharacterKR!,
             )];
 
-    // 포스터 스타일: 직접입력일 경우 입력창 값, 아니면 리스트 매칭 값
     final isPosterCustom = _selectedPosterKR == "직접 입력...";
     final posterStyle =
         isPosterCustom
             ? _posterStyleInputController.text.trim()
             : _posterStylesEN[_posterStylesKR.indexOf(_selectedPosterKR!)];
 
-    if (userPrompt.isEmpty) {
+    if (userPrompt.isEmpty || characterStyle.isEmpty || posterStyle.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('포스터 설명을 입력해주세요')));
-      return;
-    }
-    if (characterStyle.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('캐릭터 스타일을 입력하거나 선택해주세요')));
-      return;
-    }
-    if (posterStyle.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('포스터 스타일을 입력하거나 선택해주세요')));
+      ).showSnackBar(const SnackBar(content: Text('모든 입력란을 채워주세요.')));
       return;
     }
 
@@ -122,7 +98,6 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
 
     const negativePrompt =
         "no text, no letters, no words, no logo, no watermark";
-
     final combinedPrompt =
         "$userPrompt, $characterStyle, $posterStyle, poster, high quality, $negativePrompt";
 
@@ -160,11 +135,13 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
         ),
-        const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: selectedKR,
           isExpanded: true,
@@ -177,30 +154,23 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
             fillColor: Colors.grey[100],
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
           ),
         ),
-        if (showInputField) ...[
-          const SizedBox(height: 8),
-          TextField(
-            controller: inputController,
-            decoration: InputDecoration(
-              labelText: '$label 직접 입력',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: Colors.grey[100],
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+        if (showInputField)
+          Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: TextField(
+              controller: inputController,
+              decoration: InputDecoration(
+                labelText: '$label 직접 입력',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[100],
               ),
             ),
           ),
-        ],
       ],
     );
   }
@@ -211,9 +181,9 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
     final showPosterInput = _selectedPosterKR == "직접 입력...";
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AI 텍스트 기반 홍보 포스터 만들기')),
+      appBar: AppBar(title: const Text('🎨 AI 홍보 포스터 생성')),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        padding: const EdgeInsets.all(24),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -243,46 +213,32 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
                   hintText: '포스터 설명을 입력하세요',
                   filled: true,
                   fillColor: Colors.grey[100],
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
                 ),
-                style: const TextStyle(fontSize: 16),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 36),
               SizedBox(
-                height: 48,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _createPoster,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.shade300,
+                    backgroundColor: Colors.deepOrangeAccent,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                     elevation: 4,
-                    shadowColor: Colors.purpleAccent.withOpacity(0.4),
                   ),
                   child:
                       _isLoading
-                          ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              color: Colors.white,
-                            ),
-                          )
+                          ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                            '포스터 생성하기',
+                            '✨ 포스터 생성하기',
                             style: TextStyle(
-                              fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 0.4,
+                              fontSize: 16,
                             ),
                           ),
                 ),
