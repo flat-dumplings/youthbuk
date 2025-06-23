@@ -26,7 +26,7 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
   Map<String, dynamic> aiData = {};
   List<File> selectedImages = [];
 
-  String? dallEImageUrl;
+  File? backgroundImageFile; // 유저가 직접 선택한 배경 이미지 파일
 
   // 요일 선택 상태 (월~일)
   final Map<String, bool> weekdaySelected = {
@@ -89,6 +89,16 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
     }
   }
 
+  Future<void> _pickBackgroundImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        backgroundImageFile = File(pickedFile.path);
+      });
+    }
+  }
+
   Future<void> _selectDateRange() async {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
@@ -136,18 +146,28 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
   Future<void> _generateDetailPage() async {
     setState(() {
       isLoading = true;
-      dallEImageUrl = null;
     });
 
     final period = _getSelectedPeriod();
     final weekdays = _buildSelectedWeekdaysString();
 
-    final posterPrompt =
-        '${titleController.text} rural village landscape, minimalistic, soft pastel colors, simple background without text or people, clean and clear for overlay text';
-
     try {
-      final generatedImageUrl = await _generateImageWithDallE(posterPrompt);
+      String generatedImageUrl = '';
 
+      if (backgroundImageFile != null) {
+        // 유저가 직접 선택한 배경 이미지가 있으면 업로드 후 URL 사용
+        generatedImageUrl = await _uploadFileToFirebase(
+          backgroundImageFile!,
+          'backgrounds',
+        );
+      } else {
+        // AI 이미지 생성
+        final posterPrompt =
+            '${titleController.text} rural village landscape, minimalistic, soft pastel colors, simple background without text or people, clean and clear for overlay text';
+        generatedImageUrl = await _generateImageWithDallE(posterPrompt);
+      }
+
+      // Claude API에 보낼 메시지 (배경 이미지 URL 포함)
       final userMessage = '''
 체험명: ${titleController.text}
 마을명: ${villageController.text}
@@ -229,7 +249,6 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
 
       setState(() {
         aiData = result;
-        dallEImageUrl = generatedImageUrl;
         isLoading = false;
       });
 
@@ -286,7 +305,6 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
         const SizedBox(height: 16),
         const Text('가능 요일 선택', style: TextStyle(fontSize: 16)),
         const SizedBox(height: 8),
-
         Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -330,7 +348,6 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
           ],
         ),
         const SizedBox(height: 12),
-
         Wrap(
           spacing: 8,
           children:
@@ -374,6 +391,24 @@ class _DetailCreatePageState extends State<DetailCreatePage> {
             const SizedBox(height: 16),
             _buildPeriodSelector(),
             const SizedBox(height: 16),
+
+            // 배경 이미지 직접 선택 버튼 및 미리보기
+            ElevatedButton.icon(
+              onPressed: _pickBackgroundImage,
+              icon: const Icon(Icons.image_outlined),
+              label: const Text('배경 이미지 직접 선택'),
+            ),
+            if (backgroundImageFile != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                child: Image.file(
+                  backgroundImageFile!,
+                  width: double.infinity,
+                  height: 150,
+                  fit: BoxFit.cover,
+                ),
+              ),
+
             ElevatedButton.icon(
               onPressed: _pickImages,
               icon: const Icon(Icons.photo_library_outlined),

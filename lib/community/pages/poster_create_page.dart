@@ -1,15 +1,8 @@
-import 'dart:convert';
-import 'dart:io';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:youthbuk/community/services/openai_api.dart'; // generateImageInpainting 함수
 
-import 'poster_result_page.dart';
+import 'poster_result_page.dart'; // 결과 화면
+import 'package:youthbuk/community/services/openai_api.dart'; // generateImageFromText 함수
 
 class PosterCreatePage extends StatefulWidget {
   const PosterCreatePage({super.key});
@@ -19,253 +12,125 @@ class PosterCreatePage extends StatefulWidget {
 }
 
 class _PosterCreatePageState extends State<PosterCreatePage> {
-  File? _selectedImage;
-  File? _maskFile; // 인페인팅용 마스크 이미지 (흰색=변경, 검은색=유지)
   final TextEditingController _descriptionController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
-  bool _isLoading = false;
+  final TextEditingController _characterStyleInputController =
+      TextEditingController();
+  final TextEditingController _posterStyleInputController =
+      TextEditingController();
 
+  bool _isLoading = false;
   late final String openAiApiKey;
-  late final String removeBgApiKey;
+
+  // 캐릭터 스타일 리스트 (한글) + 직접 입력 옵션 추가
+  final List<String> _characterStylesKR = [
+    "애니메이션 캐릭터",
+    "귀여운 캐릭터",
+    "판타지 캐릭터",
+    "만화 스타일 캐릭터",
+    "슈퍼히어로 스타일 캐릭터",
+    "미니멀리즘 스타일 캐릭터",
+    "레트로 게임 스타일 캐릭터",
+    "직접 입력...",
+  ];
+
+  // 영어 프롬프트 (AI 생성용), 직접입력은 빈 문자열으로 둠
+  final List<String> _characterStylesEN = [
+    "bright and cute animated character",
+    "cute cartoon style character",
+    "fantasy wizard or fairy character",
+    "classic cartoon style character",
+    "superhero character",
+    "minimalist style character",
+    "retro pixel art character",
+    "", // 직접 입력일 경우 빈 문자열
+  ];
+
+  // 포스터 스타일 리스트 (한글) + 직접 입력 옵션 추가
+  final List<String> _posterStylesKR = [
+    "감성 스타일",
+    "모던 스타일",
+    "레트로 스타일",
+    "미니멀 스타일",
+    "컬러풀 스타일",
+    "직접 입력...",
+  ];
+
+  // 영어 프롬프트 스타일 (AI 생성용)
+  final List<String> _posterStylesEN = [
+    "emotional style",
+    "modern style",
+    "retro style",
+    "minimal style",
+    "colorful style",
+    "", // 직접 입력일 경우 빈 문자열
+  ];
+
+  String? _selectedCharacterKR;
+  String? _selectedPosterKR;
 
   @override
   void initState() {
     super.initState();
     openAiApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
-    removeBgApiKey = dotenv.env['REMOVE_BG_API_KEY'] ?? '';
-    debugPrint('OpenAI API Key: $openAiApiKey');
-    debugPrint('RemoveBG API Key: $removeBgApiKey');
-  }
 
-  // 원본 이미지 선택 → PNG 변환 → 배경제거 → 마스크 이미지 생성 → 크기 맞춤
-  Future<void> _pickImageAndRemoveBg() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile == null) return;
+    _selectedCharacterKR = _characterStylesKR.first;
+    _selectedPosterKR = _posterStylesKR.first;
 
-    setState(() {
-      _isLoading = true;
-      _maskFile = null;
-    });
-
-    // PNG 변환
-    final pngFile = await _convertToPng(File(pickedFile.path));
-    setState(() {
-      _selectedImage = pngFile;
-    });
-
-    // 배경제거
-    final removedBgFile = await _removeBackground(pngFile);
-    if (removedBgFile == null) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('배경제거에 실패했습니다')));
-      return;
-    }
-
-    // 배경제거된 이미지로 마스크 이미지 생성 (투명->검정, 불투명->흰색)
-    final maskFile = await _createMaskFromTransparentImage(removedBgFile);
-    if (maskFile == null) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('마스크 이미지 생성 실패')));
-      return;
-    }
-
-    // 크기 맞춤
-    final resizedMaskFile = await _resizeImageToMatch(
-      maskFile,
-      _selectedImage!,
-    );
-
-    setState(() {
-      _maskFile = resizedMaskFile ?? maskFile;
-      _isLoading = false;
-    });
-  }
-
-  // PNG 변환 함수
-  Future<File> _convertToPng(File inputFile) async {
-    final bytes = await inputFile.readAsBytes();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    final image = frame.image;
-
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    final pngBytes = byteData!.buffer.asUint8List();
-
-    final dir = await getTemporaryDirectory();
-    final outputFile = File('${dir.path}/converted.png');
-    await outputFile.writeAsBytes(pngBytes);
-    debugPrint('Converted image saved at: ${outputFile.path}');
-    return outputFile;
-  }
-
-  // remove.bg API 호출
-  Future<File?> _removeBackground(File originalImage) async {
-    final url = Uri.parse('https://api.remove.bg/v1.0/removebg');
-    final request = http.MultipartRequest('POST', url);
-    request.headers['X-Api-Key'] = removeBgApiKey;
-    request.files.add(
-      await http.MultipartFile.fromPath('image_file', originalImage.path),
-    );
-    request.fields['size'] = 'auto';
-
-    try {
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
-        final bytes = await response.stream.toBytes();
-        final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/removed_bg.png');
-        await file.writeAsBytes(bytes);
-        debugPrint('Background removal succeeded: saved to ${file.path}');
-        return file;
-      } else {
-        final responseBody = await response.stream.bytesToString();
-        debugPrint('Background removal failed: ${response.statusCode}');
-        debugPrint('Response body: $responseBody');
-        return null;
-      }
-    } catch (e) {
-      debugPrint('Exception during background removal: $e');
-      return null;
-    }
-  }
-
-  // 투명 배경제거 이미지에서 흰/검 마스크 이미지 생성
-  Future<File?> _createMaskFromTransparentImage(
-    File transparentImageFile,
-  ) async {
-    try {
-      final bytes = await transparentImageFile.readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      final ui.Image image = frame.image;
-
-      final recorder = ui.PictureRecorder();
-      final canvas = Canvas(recorder);
-
-      final paintWhite = Paint()..color = Colors.white;
-      final paintBlack = Paint()..color = Colors.black;
-
-      final width = image.width;
-      final height = image.height;
-
-      final pixelData = await image.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
-      );
-      if (pixelData == null) return null;
-
-      // 캔버스 배경을 검정색으로 채움
-      canvas.drawRect(
-        Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
-        paintBlack,
-      );
-
-      final pixels = pixelData.buffer.asUint8List();
-
-      // 각 픽셀의 알파 채널 확인해 흰색(불투명) 또는 검은색(투명) 칠하기
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          final offset = (y * width + x) * 4;
-          final alpha = pixels[offset + 3];
-          if (alpha > 128) {
-            // 불투명 영역: 흰색 점 찍기
-            canvas.drawPoints(ui.PointMode.points, [
-              Offset(x.toDouble(), y.toDouble()),
-            ], paintWhite);
-          }
-          // 투명 영역은 검정색(배경) 그대로 둠
-        }
-      }
-
-      final picture = recorder.endRecording();
-      final maskImage = await picture.toImage(width, height);
-      final byteData2 = await maskImage.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
-      if (byteData2 == null) return null;
-
-      final pngBytes = byteData2.buffer.asUint8List();
-
-      final dir = await getTemporaryDirectory();
-      final maskFile = File('${dir.path}/mask_from_transparent.png');
-      await maskFile.writeAsBytes(pngBytes);
-      debugPrint('Mask image created: ${maskFile.path}');
-
-      return maskFile;
-    } catch (e) {
-      debugPrint('Error creating mask image: $e');
-      return null;
-    }
-  }
-
-  // 마스크 이미지 원본 이미지 크기에 맞게 리사이징
-  Future<File?> _resizeImageToMatch(File maskFile, File originalFile) async {
-    try {
-      final originalBytes = await originalFile.readAsBytes();
-      final originalCodec = await ui.instantiateImageCodec(originalBytes);
-      final originalFrame = await originalCodec.getNextFrame();
-      final originalImage = originalFrame.image;
-
-      final maskBytes = await maskFile.readAsBytes();
-      final maskCodec = await ui.instantiateImageCodec(
-        maskBytes,
-        targetWidth: originalImage.width,
-        targetHeight: originalImage.height,
-      );
-      final maskFrame = await maskCodec.getNextFrame();
-      final resizedMaskImage = maskFrame.image;
-
-      final byteData = await resizedMaskImage.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
-      final pngBytes = byteData!.buffer.asUint8List();
-
-      final dir = await getTemporaryDirectory();
-      final resizedMaskFile = File('${dir.path}/resized_mask.png');
-      await resizedMaskFile.writeAsBytes(pngBytes);
-      debugPrint('Resized mask saved at: ${resizedMaskFile.path}');
-
-      return resizedMaskFile;
-    } catch (e) {
-      debugPrint('Error resizing mask image: $e');
-      return null;
-    }
+    _characterStyleInputController.text = "";
+    _posterStyleInputController.text = "";
   }
 
   Future<void> _createPoster() async {
-    if (_selectedImage == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('원본 이미지를 선택해주세요')));
-      return;
-    }
-    if (_maskFile == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('마스크 이미지가 없습니다')));
-      return;
-    }
+    final userPrompt = _descriptionController.text.trim();
 
-    final prompt = _descriptionController.text.trim();
-    if (prompt.isEmpty) {
+    // 캐릭터 스타일: 직접입력일 경우 입력창 값, 아니면 리스트 매칭 값
+    final isCharacterCustom = _selectedCharacterKR == "직접 입력...";
+    final characterStyle =
+        isCharacterCustom
+            ? _characterStyleInputController.text.trim()
+            : _characterStylesEN[_characterStylesKR.indexOf(
+              _selectedCharacterKR!,
+            )];
+
+    // 포스터 스타일: 직접입력일 경우 입력창 값, 아니면 리스트 매칭 값
+    final isPosterCustom = _selectedPosterKR == "직접 입력...";
+    final posterStyle =
+        isPosterCustom
+            ? _posterStyleInputController.text.trim()
+            : _posterStylesEN[_posterStylesKR.indexOf(_selectedPosterKR!)];
+
+    if (userPrompt.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('포스터 설명을 입력해주세요')));
       return;
     }
+    if (characterStyle.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('캐릭터 스타일을 입력하거나 선택해주세요')));
+      return;
+    }
+    if (posterStyle.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('포스터 스타일을 입력하거나 선택해주세요')));
+      return;
+    }
 
     setState(() => _isLoading = true);
 
-    final imageUrl = await generateImageInpainting(
+    const negativePrompt =
+        "no text, no letters, no words, no logo, no watermark";
+
+    final combinedPrompt =
+        "$userPrompt, $characterStyle, $posterStyle, poster, high quality, $negativePrompt";
+
+    final imageUrl = await generateImageFromText(
       apiKey: openAiApiKey,
-      image: _selectedImage!,
-      mask: _maskFile!,
-      prompt: prompt,
+      prompt: combinedPrompt,
       size: "1024x1024",
+      n: 1,
     );
 
     setState(() => _isLoading = false);
@@ -274,8 +139,7 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder:
-              (_) => PosterResultPage(imageUrl: imageUrl, description: prompt),
+          builder: (_) => PosterResultPage(backgroundImageUrl: imageUrl),
         ),
       );
     } else {
@@ -285,73 +149,146 @@ class _PosterCreatePageState extends State<PosterCreatePage> {
     }
   }
 
+  Widget _buildStyleSelector({
+    required String label,
+    required List<String> itemsKR,
+    required String? selectedKR,
+    required ValueChanged<String?> onChanged,
+    required TextEditingController inputController,
+    required bool showInputField,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: selectedKR,
+          isExpanded: true,
+          items:
+              itemsKR
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            filled: true,
+            fillColor: Colors.grey[100],
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+        ),
+        if (showInputField) ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: inputController,
+            decoration: InputDecoration(
+              labelText: '$label 직접 입력',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: Colors.grey[100],
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showCharacterInput = _selectedCharacterKR == "직접 입력...";
+    final showPosterInput = _selectedPosterKR == "직접 입력...";
+
     return Scaffold(
-      appBar: AppBar(title: const Text('AI 인페인팅 포스터 만들기')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Column(
-          children: [
-            ElevatedButton(
-              onPressed: _isLoading ? null : _pickImageAndRemoveBg,
-              child: const Text('원본 이미지 선택 및 배경제거'),
-            ),
-            const SizedBox(height: 8),
-            if (_selectedImage != null) ...[
-              const Text('원본 이미지:'),
-              const SizedBox(height: 8),
-              Image.file(_selectedImage!, height: 200, fit: BoxFit.contain),
-              const SizedBox(height: 16),
-            ],
-            if (_maskFile != null) ...[
-              const Text('마스크 이미지 (대비확인용):'),
-              const SizedBox(height: 8),
-              Image.file(_maskFile!, height: 200, fit: BoxFit.contain),
-              const SizedBox(height: 16),
-            ],
-            TextField(
-              controller: _descriptionController,
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: '포스터 설명 입력',
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
+      appBar: AppBar(title: const Text('AI 텍스트 기반 홍보 포스터 만들기')),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildStyleSelector(
+                label: "캐릭터 스타일",
+                itemsKR: _characterStylesKR,
+                selectedKR: _selectedCharacterKR,
+                onChanged: (v) => setState(() => _selectedCharacterKR = v),
+                inputController: _characterStyleInputController,
+                showInputField: showCharacterInput,
               ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 140,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _createPoster,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple.shade300,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(22),
+              const SizedBox(height: 24),
+              _buildStyleSelector(
+                label: "포스터 스타일",
+                itemsKR: _posterStylesKR,
+                selectedKR: _selectedPosterKR,
+                onChanged: (v) => setState(() => _selectedPosterKR = v),
+                inputController: _posterStyleInputController,
+                showInputField: showPosterInput,
+              ),
+              const SizedBox(height: 24),
+              TextField(
+                controller: _descriptionController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: '포스터 설명을 입력하세요',
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
                   ),
                 ),
-                child:
-                    _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                          '만들기',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                style: const TextStyle(fontSize: 16),
               ),
-            ),
-          ],
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _createPoster,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade300,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    elevation: 4,
+                    shadowColor: Colors.purpleAccent.withOpacity(0.4),
+                  ),
+                  child:
+                      _isLoading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Text(
+                            '포스터 생성하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

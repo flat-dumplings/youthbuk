@@ -131,7 +131,7 @@ class _AiPageState extends State<AiPage> {
               costText: '비용 : 1회 1000원',
             ),
             _buildCard(
-              imagePath: 'assets/images/character_poster.png', // 새 이미지 경로 필요
+              imagePath: 'assets/images/detail_poster.png', // 새 이미지 경로 필요
               title: 'AI 상세페이지 제작',
               costText: '비용 : 1회 1000원',
             ),

@@ -1,9 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:youthbuk/community/services/openai_api.dart';
-import 'poster_result_page.dart';
+
+import 'package:youthbuk/community/pages/character_result_page.dart';
+import 'package:youthbuk/community/services/openai_api.dart'; // generateImageFromText 함수
 
 class CharacterCreatePage extends StatefulWidget {
   const CharacterCreatePage({super.key});
@@ -13,61 +12,78 @@ class CharacterCreatePage extends StatefulWidget {
 }
 
 class _CharacterCreatePageState extends State<CharacterCreatePage> {
-  File? _selectedImage;
-  File? _maskImage; // 마스크 이미지 추가
   final TextEditingController _descriptionController = TextEditingController();
-  final ImagePicker _picker = ImagePicker();
-  bool _isLoading = false;
+  final TextEditingController _customTypeController = TextEditingController();
 
+  bool _isLoading = false;
   late final String openAiApiKey;
+
+  final List<String> _characterTypesKR = [
+    "애니메이션 캐릭터",
+    "귀여운 캐릭터",
+    "판타지 캐릭터",
+    "만화 스타일 캐릭터",
+    "슈퍼히어로 스타일 캐릭터",
+    "미니멀리즘 스타일 캐릭터",
+    "레트로 게임 스타일 캐릭터",
+    "직접 입력...",
+  ];
+
+  final List<String> _characterTypesEN = [
+    "bright and cute animated character",
+    "cute cartoon style character",
+    "fantasy wizard or fairy character",
+    "classic cartoon style character",
+    "superhero character",
+    "minimalist style character",
+    "retro pixel art character",
+    "", // 직접 입력일 때는 빈 문자열
+  ];
+
+  String? _selectedTypeKR;
 
   @override
   void initState() {
     super.initState();
     openAiApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile != null) {
-      setState(() => _selectedImage = File(pickedFile.path));
-    }
-  }
-
-  Future<void> _pickMaskImage() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile != null) {
-      setState(() => _maskImage = File(pickedFile.path));
-    }
+    _selectedTypeKR = _characterTypesKR.first;
+    _customTypeController.text = "";
   }
 
   Future<void> _createCharacter() async {
-    if (_selectedImage == null || _maskImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('원본 이미지와 마스크 이미지를 모두 선택해주세요')),
-      );
-      return;
-    }
-    final prompt = _descriptionController.text.trim();
-    if (prompt.isEmpty) {
+    final userPrompt = _descriptionController.text.trim();
+
+    final isCustom = _selectedTypeKR == "직접 입력...";
+    final characterTypeEN =
+        isCustom
+            ? _customTypeController.text.trim()
+            : _characterTypesEN[_characterTypesKR.indexOf(_selectedTypeKR!)];
+
+    if (userPrompt.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('설명을 입력해주세요')));
+      ).showSnackBar(const SnackBar(content: Text('캐릭터 설명을 입력해주세요')));
+      return;
+    }
+    if (characterTypeEN.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('캐릭터 유형을 입력하거나 선택해주세요')));
       return;
     }
 
     setState(() => _isLoading = true);
 
-    final imageUrl = await generateImageInpainting(
+    const negativePrompt =
+        "no text, no letters, no words, no logo, no watermark, no background, no objects, character only";
+
+    final combinedPrompt = "$userPrompt, $characterTypeEN, $negativePrompt";
+
+    final imageUrl = await generateImageFromText(
       apiKey: openAiApiKey,
-      image: _selectedImage!,
-      mask: _maskImage!,
-      prompt: prompt,
+      prompt: combinedPrompt,
       size: "1024x1024",
+      n: 1,
     );
 
     setState(() => _isLoading = false);
@@ -77,7 +93,10 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
         context,
         MaterialPageRoute(
           builder:
-              (_) => PosterResultPage(imageUrl: imageUrl, description: prompt),
+              (_) => CharacterResultPage(
+                imageUrl: imageUrl,
+                description: combinedPrompt,
+              ),
         ),
       );
     } else {
@@ -87,108 +106,114 @@ class _CharacterCreatePageState extends State<CharacterCreatePage> {
     }
   }
 
-  Widget _buildImagePreview(File? image, String label, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 180,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.25),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          image:
-              image != null
-                  ? DecorationImage(image: FileImage(image), fit: BoxFit.cover)
-                  : null,
-        ),
-        child:
-            image == null
-                ? Center(
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                )
-                : null,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final showCustomInput = _selectedTypeKR == "직접 입력...";
+
     return Scaffold(
-      appBar: AppBar(title: const Text('마을만의 캐릭터 만들기 (인페인팅)')),
-      body: SingleChildScrollView(
+      appBar: AppBar(title: const Text('캐릭터 생성기')),
+      body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Column(
-          children: [
-            _buildImagePreview(_selectedImage, '원본 이미지 선택 (탭)', _pickImage),
-            const SizedBox(height: 16),
-            _buildImagePreview(_maskImage, '마스크 이미지 선택 (탭)', _pickMaskImage),
-            const SizedBox(height: 32),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: '캐릭터 설명 입력',
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: 140,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _createCharacter,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple.shade300,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(22),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DropdownButtonFormField<String>(
+                value: _selectedTypeKR,
+                items:
+                    _characterTypesKR
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedTypeKR = value;
+                    if (value != "직접 입력...") {
+                      _customTypeController.clear();
+                    }
+                  });
+                },
+                decoration: InputDecoration(
+                  labelText: "캐릭터 유형 선택",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 4,
-                  shadowColor: Colors.purpleAccent.withOpacity(0.4),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 ),
-                child:
-                    _isLoading
-                        ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: Colors.white,
-                          ),
-                        )
-                        : const Text(
-                          '만들기',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
               ),
-            ),
-          ],
+              if (showCustomInput) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _customTypeController,
+                  decoration: InputDecoration(
+                    labelText: "캐릭터 유형 직접 입력",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              TextField(
+                controller: _descriptionController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: '캐릭터 설명을 입력하세요',
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _createCharacter,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade300,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    elevation: 4,
+                    shadowColor: Colors.purpleAccent.withOpacity(0.4),
+                  ),
+                  child:
+                      _isLoading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Text(
+                            '캐릭터 생성하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
