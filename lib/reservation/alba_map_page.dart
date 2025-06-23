@@ -83,6 +83,7 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
             '대표자명': data['대표자명'] ?? '',
             '대표전화번호': data['대표전화번호'] ?? '',
             '마을명': data['마을명'] ?? '',
+            'imageUrl': data['imageUrl'] ?? '',
           });
         }
       }
@@ -113,6 +114,7 @@ class _AlbaMapPageState extends State<AlbaMapPage> {
             '세부유형': data['세부유형'] ?? '',
             '입주가능일': data['입주가능일'] ?? '',
             '운영기간': data['운영기간'] ?? '',
+            'imageUrl': data['imageUrl'] ?? '',
           });
         }
       }

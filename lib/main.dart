@@ -171,10 +171,10 @@ class _MainPageState extends State<MainPage> {
                 Icons.home_outlined,
                 Icons.explore_outlined,
                 Icons.calendar_today_outlined,
-                Icons.chat_bubble_outline,
+                Icons.add_a_photo_outlined,
                 Icons.person_outline,
               ];
-              final labels = ['홈', '체험', '알바', '커뮤니티', '마이'];
+              final labels = ['홈', '체험', '알바', 'AI 생성', '마이'];
               final isSelected = index == _currentIndex;
 
               return GestureDetector(

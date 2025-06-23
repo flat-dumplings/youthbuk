@@ -119,11 +119,11 @@ class _HomePageState extends State<HomePage> {
               children: [
                 BannerWidget(
                   imagePaths: [
-                    'assets/images/banner/001.png',
                     'assets/images/banner/002.png',
-                    'assets/images/banner/003.png',
-                    'assets/images/banner/004.png',
                     'assets/images/banner/005.png',
+                    'assets/images/banner/001.png',
+                    'assets/images/banner/004.png',
+                    'assets/images/banner/003.png',
                   ],
                   onTap: (index) {
                     print('배너 $index 클릭됨');

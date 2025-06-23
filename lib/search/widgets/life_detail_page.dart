@@ -212,35 +212,78 @@ class _LifeDetailPageState extends State<LifeDetailPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('지원할 이력서를 선택해주세요'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              title: const Text(
+                '지원할 이력서를 선택해주세요',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: ListView(
-                  shrinkWrap: true,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children:
                       resumeList.map((resume) {
                         final selected = selectedResumes.contains(resume);
-                        return CheckboxListTile(
-                          title: Text(resume),
-                          value: selected,
-                          onChanged: (checked) {
+                        return GestureDetector(
+                          onTap: () {
                             setStateDialog(() {
-                              if (checked == true) {
-                                selectedResumes.add(resume);
-                              } else {
+                              if (selected) {
                                 selectedResumes.remove(resume);
+                              } else {
+                                selectedResumes.add(resume);
                               }
                             });
                           },
+                          child: Container(
+                            margin: EdgeInsets.symmetric(vertical: 6.h),
+                            padding: EdgeInsets.all(14.w),
+                            decoration: BoxDecoration(
+                              color:
+                                  selected
+                                      ? Colors.orange.shade50
+                                      : Colors.grey.shade100,
+                              border: Border.all(
+                                color:
+                                    selected
+                                        ? Colors.deepOrangeAccent
+                                        : Colors.grey.shade300,
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  selected
+                                      ? Icons.check_circle
+                                      : Icons.radio_button_unchecked,
+                                  color:
+                                      selected
+                                          ? Colors.deepOrangeAccent
+                                          : Colors.grey,
+                                ),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Text(
+                                    resume,
+                                    style: TextStyle(
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         );
                       }).toList(),
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                   child: const Text('취소'),
                 ),
                 ElevatedButton(
@@ -251,6 +294,12 @@ class _LifeDetailPageState extends State<LifeDetailPage> {
                             _showApplyCompleteDialog();
                           }
                           : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        selectedResumes.isNotEmpty
+                            ? Colors.orange
+                            : Colors.grey.shade300,
+                  ),
                   child: const Text('지원하기'),
                 ),
               ],

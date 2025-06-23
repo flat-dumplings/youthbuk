@@ -286,7 +286,7 @@ class _VillageListPageState extends State<VillageListPage> {
                             ),
                             SizedBox(height: 6.h),
                             Text(
-                              '간단한 소개 문구를 여기에 표시할 수 있습니다.',
+                              v.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

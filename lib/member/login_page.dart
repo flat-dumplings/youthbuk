@@ -30,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFEB3B),
+      backgroundColor: const Color.fromARGB(255, 255, 240, 227),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -43,8 +43,8 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(height: 60.h),
                   Image.asset(
                     'assets/images/login_logo.png',
-                    width: 120.w,
-                    height: 120.h,
+                    width: 300.w,
+                    height: 300.h,
                   ),
                   SizedBox(height: 40.h),
                   TextFormField(
@@ -137,29 +137,63 @@ class _LoginPageState extends State<LoginPage> {
                                 builder: (_) => const SignupPage(),
                               ),
                             ),
-                        child: Text('회원가입', style: TextStyle(fontSize: 14.sp)),
+                        child: Text(
+                          '회원가입',
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            color: Colors.black,
+                          ),
+                        ),
                       ),
                       TextButton(
                         onPressed: () {},
                         child: Text(
-                          '비밀번호 찾기',
-                          style: TextStyle(fontSize: 14.sp),
+                          '아이디 / 비밀번호 찾기',
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   SizedBox(height: 16.h),
-                  const Divider(),
+                  const Divider(color: Color.fromARGB(101, 158, 158, 158)),
                   SizedBox(height: 12.h),
-                  Text('간편 로그인', style: TextStyle(fontSize: 14.sp)),
+                  Text(
+                    '간편 로그인',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   SizedBox(height: 12.h),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
-                        iconSize: 36.sp,
                         onPressed: () {},
-                        icon: Image.asset('assets/icons/google.png'),
+                        icon: SizedBox(
+                          width: 50.w,
+                          height: 50.w,
+                          child: Image.asset(
+                            'assets/icons/google.png',
+                            color: null, // ✅ 흰색 이미지가 회색으로 변하는 문제 해결
+                            fit: BoxFit.contain, // 옵션: 꽉 채우되 비율 유지
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: SizedBox(
+                          width: 50.w,
+                          height: 50.w,
+                          child: Image.asset(
+                            'assets/icons/naver.png',
+                            color: null, // ✅ 흰색 이미지가 회색으로 변하는 문제 해결
+                            fit: BoxFit.contain, // 옵션: 꽉 채우되 비율 유지
+                          ),
+                        ),
                       ),
                     ],
                   ),

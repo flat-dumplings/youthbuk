@@ -345,7 +345,7 @@ class _SearchActivityTabState extends State<SearchActivityTab> {
             ),
             SizedBox(height: 6.h),
             Text(
-              data['description'] ?? '설명 없음',
+              data['summary'] ?? '설명 없음',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
