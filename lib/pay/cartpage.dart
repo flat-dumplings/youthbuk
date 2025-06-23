@@ -12,8 +12,13 @@ class CartPage extends StatefulWidget {
 
 class _CartPageState extends State<CartPage> {
   final List<CartItem> cartItems = [
-    CartItem(name: '충북 농촌 체험 프로그램 A', price: 25000, quantity: 2),
-    CartItem(name: '충북 농촌 체험 프로그램 B', price: 18000, quantity: 1),
+    CartItem(
+      name: '[강내연꽃마을] 고구마 캐기 체험',
+      price: 30000,
+      quantity: 1,
+      reservedDate: DateTime(2025, 6, 26),
+    ),
+    //CartItem(name: '충북 농촌 체험 프로그램 B', price: 18000, quantity: 1),
   ];
 
   int get totalPrice =>
@@ -83,14 +88,28 @@ class _CartPageState extends State<CartPage> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            item.name,
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                '예약일: ${item.reservedDate!.year}.${item.reservedDate!.month.toString().padLeft(2, '0')}.${item.reservedDate!.day.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+
                         SizedBox(width: 12.w),
                         Text(
                           '${item.price}원',
