@@ -19,12 +19,12 @@ class _AiPageState extends State<AiPage> {
         context,
         MaterialPageRoute(builder: (_) => const PosterCreatePage()),
       );
-    } else if (type == '마을만의 캐릭터 제작') {
+    } else if (type == 'AI 마을만의 캐릭터 제작') {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const CharacterCreatePage()),
       );
-    } else if (type == 'AI 상세페이지 제작') {
+    } else if (type == 'AI 쇼츠 영상 제작') {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const DetailCreatePage()),
@@ -163,13 +163,13 @@ class _AiPageState extends State<AiPage> {
             ),
             _buildCard(
               imagePath: 'assets/images/character_poster.png',
-              title: '마을만의 캐릭터 제작',
+              title: 'AI 마을만의 캐릭터 제작',
               costText: '비용 : 1회 1000원',
             ),
             _buildCard(
-              imagePath: 'assets/images/detail_poster.png',
-              title: 'AI 상세페이지 제작',
-              costText: '비용 : 1회 1000원',
+              imagePath: 'assets/images/ai_short.jpg',
+              title: 'AI 쇼츠 영상 제작',
+              costText: '비용 : 1회 2000원',
             ),
           ],
         ),

@@ -1,11 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // dotenv import
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:fal_client/fal_client.dart';
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'experience_preview_page.dart';
+
+import 'video_player_page.dart';
 
 class DetailCreatePage extends StatefulWidget {
   const DetailCreatePage({super.key});
@@ -15,437 +22,565 @@ class DetailCreatePage extends StatefulWidget {
 }
 
 class _DetailCreatePageState extends State<DetailCreatePage> {
-  final TextEditingController titleController = TextEditingController();
-  final TextEditingController villageController = TextEditingController();
-  final TextEditingController priceController = TextEditingController();
-  final TextEditingController peopleController = TextEditingController();
-
-  DateTimeRange? selectedDateRange;
-
+  late final TextEditingController titleController;
+  late final TextEditingController scriptController;
+  late final TextEditingController imageDescriptionController;
+  List<XFile> selectedImages = [];
   bool isLoading = false;
-  Map<String, dynamic> aiData = {};
-  List<File> selectedImages = [];
 
-  File? backgroundImageFile; // 유저가 직접 선택한 배경 이미지 파일
+  late FalClient fal;
+  late String openAiApiKey;
+  late String falApiKey;
+  late String creatomateApiKey;
+  late String googleTtsApiKey;
 
-  // 요일 선택 상태 (월~일)
-  final Map<String, bool> weekdaySelected = {
-    '월': false,
-    '화': false,
-    '수': false,
-    '목': false,
-    '금': false,
-    '토': false,
-    '일': false,
-  };
+  String? falVideoUrl;
+  String? ttsAudioUrl;
 
-  void _toggleAll(bool selectAll) {
-    setState(() {
-      for (var day in weekdaySelected.keys) {
-        weekdaySelected[day] = selectAll;
-      }
-    });
+  List<Map<String, dynamic>> timedScript = [];
+
+  double ttsDuration = 10.0;
+
+  String selectedAspectRatio = "9:16";
+  final List<String> aspectRatioOptions = ["16:9", "9:16", "1:1"];
+
+  @override
+  void initState() {
+    super.initState();
+
+    Firebase.initializeApp();
+
+    titleController = TextEditingController();
+    scriptController = TextEditingController();
+    imageDescriptionController = TextEditingController();
+
+    openAiApiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+    falApiKey = dotenv.env['FAL_AI_API_KEY'] ?? '';
+    creatomateApiKey = dotenv.env['CREATOMATE_API_KEY'] ?? '';
+    googleTtsApiKey = dotenv.env['GOOGLE_API_KEY'] ?? '';
+
+    fal = FalClient.withCredentials(falApiKey);
   }
 
-  void _toggleWeekend() {
-    setState(() {
-      weekdaySelected['토'] = !(weekdaySelected['토'] ?? false);
-      weekdaySelected['일'] = !(weekdaySelected['일'] ?? false);
-    });
+  @override
+  void dispose() {
+    titleController.dispose();
+    scriptController.dispose();
+    imageDescriptionController.dispose();
+    super.dispose();
   }
 
-  void _toggleWeekday() {
-    setState(() {
-      for (var day in ['월', '화', '수', '목', '금']) {
-        weekdaySelected[day] = !(weekdaySelected[day] ?? false);
-      }
-    });
-  }
+  List<Map<String, dynamic>> assignTimedScriptByTextLength(
+    List<String> texts, {
+    double speed = 1.2,
+  }) {
+    const baseCharsPerSecond = 15;
+    final charsPerSecond = baseCharsPerSecond * speed;
 
-  String _buildSelectedWeekdaysString() {
-    String days = weekdaySelected.entries
-        .where((entry) => entry.value)
-        .map((e) => e.key)
-        .join('');
-    return days.isEmpty ? '' : days;
-  }
+    List<Map<String, dynamic>> result = [];
+    double currentTime = 0.0;
 
-  String _getSelectedPeriod() {
-    if (selectedDateRange != null) {
-      return '${selectedDateRange!.start.year}.${selectedDateRange!.start.month}.${selectedDateRange!.start.day} ~ '
-          '${selectedDateRange!.end.year}.${selectedDateRange!.end.month}.${selectedDateRange!.end.day}';
-    } else {
-      return '미선택';
-    }
-  }
+    for (final text in texts) {
+      final length = text.length;
+      final duration = length / charsPerSecond;
 
-  Future<void> _pickImages() async {
-    final picker = ImagePicker();
-    final pickedFiles = await picker.pickMultiImage();
-    if (pickedFiles.isNotEmpty) {
-      setState(() {
-        selectedImages = pickedFiles.map((e) => File(e.path)).toList();
+      final start = currentTime;
+      final end = currentTime + duration;
+
+      result.add({
+        'text': text,
+        'start': double.parse(start.toStringAsFixed(2)),
+        'end': double.parse(end.toStringAsFixed(2)),
       });
-    }
-  }
 
-  Future<void> _pickBackgroundImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        backgroundImageFile = File(pickedFile.path);
-      });
-    }
-  }
-
-  Future<void> _selectDateRange() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: now,
-      lastDate: DateTime(now.year + 1),
-      initialDateRange: selectedDateRange,
-    );
-    if (picked != null) {
-      setState(() => selectedDateRange = picked);
-    }
-  }
-
-  Future<String> _uploadFileToFirebase(File file, String folder) async {
-    final fileName =
-        '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-    final ref = FirebaseStorage.instance.ref().child('$folder/$fileName');
-    final uploadTask = await ref.putFile(file);
-    return await uploadTask.ref.getDownloadURL();
-  }
-
-  Future<String> _generateImageWithDallE(String prompt) async {
-    final response = await http.post(
-      Uri.parse('https://api.openai.com/v1/images/generations'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${dotenv.env['OPENAI_API_KEY']}',
-      },
-      body: jsonEncode({
-        'model': 'dall-e-3',
-        'prompt': prompt,
-        'n': 1,
-        'size': '1024x1024',
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('DALL·E 이미지 생성 실패: ${response.body}');
+      currentTime = end;
     }
 
-    final data = jsonDecode(response.body);
-    return data['data'][0]['url'];
+    if (currentTime > 10) {
+      final scale = 10 / currentTime;
+      for (var item in result) {
+        item['start'] = double.parse(
+          (item['start'] * scale).toStringAsFixed(2),
+        );
+        item['end'] = double.parse((item['end'] * scale).toStringAsFixed(2));
+      }
+      currentTime = 10.0;
+    }
+
+    ttsDuration = currentTime;
+    return result;
   }
 
-  Future<void> _generateDetailPage() async {
-    setState(() {
-      isLoading = true;
-    });
+  Future<void> generateAIScript() async {
+    final titleText = titleController.text.trim();
+    final imageDescription = imageDescriptionController.text.trim();
 
-    final period = _getSelectedPeriod();
-    final weekdays = _buildSelectedWeekdaysString();
+    if (titleText.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('제목을 먼저 입력하세요')));
+      return;
+    }
+
+    setState(() => isLoading = true);
 
     try {
-      String generatedImageUrl = '';
+      final prompt = '''
+제목: $titleText
+이미지 설명: $imageDescription
 
-      if (backgroundImageFile != null) {
-        // 유저가 직접 선택한 배경 이미지가 있으면 업로드 후 URL 사용
-        generatedImageUrl = await _uploadFileToFirebase(
-          backgroundImageFile!,
-          'backgrounds',
-        );
-      } else {
-        // AI 이미지 생성
-        final posterPrompt =
-            '${titleController.text} rural village landscape, minimalistic, soft pastel colors, simple background without text or people, clean and clear for overlay text';
-        generatedImageUrl = await _generateImageWithDallE(posterPrompt);
-      }
-
-      // Claude API에 보낼 메시지 (배경 이미지 URL 포함)
-      final userMessage = '''
-체험명: ${titleController.text}
-마을명: ${villageController.text}
-비용: ${priceController.text}
-기간: $period
-가능 요일: $weekdays
-인원: ${peopleController.text}
-
-다음 정보를 JSON 형식으로 정확하게 key와 value 쌍으로만 만들어줘:
-{
-  "main_title": "",
-  "info_price": "",
-  "info_time": "",
-  "info_participants": "",
-  "refund_policy": "",
-  "extra_comment": "",
-  "village_name": "",
-  "promo_message": "",
-  "possible_days": "$weekdays",
-  "background_image_url": "$generatedImageUrl"
-}
+10초 내외 길이의 영상 홍보 대사를 만들어 주세요. 
+친근하고 설득력 있게, 시청자가 흥미를 가질 수 있도록 문장별로 분리해서  
+대사 텍스트만 줄바꿈 형태로 출력해 주세요.
 ''';
 
+      final url = Uri.parse('https://api.openai.com/v1/chat/completions');
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $openAiApiKey',
+      };
+      final body = jsonEncode({
+        "model": "gpt-4o-mini",
+        "messages": [
+          {
+            "role": "system",
+            "content":
+                "You are a helpful assistant that returns video narration scripts as plain text separated by newlines.",
+          },
+          {"role": "user", "content": prompt},
+        ],
+        "max_tokens": 300,
+        "temperature": 0.7,
+      });
+
+      final response = await http.post(url, headers: headers, body: body);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final content = data['choices'][0]['message']['content'].trim();
+
+        final lines =
+            content
+                .split('\n')
+                .where((String line) => line.trim().isNotEmpty)
+                .toList();
+
+        timedScript = assignTimedScriptByTextLength(lines, speed: 1.2);
+
+        scriptController.text = lines.join('\n');
+      } else {
+        throw Exception(
+          'OpenAI API Error ${response.statusCode}: ${response.body}',
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('AI 대사 생성 실패: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<String> uploadTtsAudioToFirebase(String base64Audio) async {
+    Uint8List audioBytes = base64Decode(base64Audio);
+
+    final storageRef = FirebaseStorage.instance.ref();
+    final audioRef = storageRef.child(
+      'tts_audios/${DateTime.now().millisecondsSinceEpoch}.mp3',
+    );
+
+    final uploadTask = audioRef.putData(
+      audioBytes,
+      SettableMetadata(contentType: 'audio/mp3'),
+    );
+
+    await uploadTask.whenComplete(() {});
+
+    final downloadUrl = await audioRef.getDownloadURL();
+
+    return downloadUrl;
+  }
+
+  Future<void> convertScriptToTTSAndUpload() async {
+    final scriptText = scriptController.text.trim();
+    if (scriptText.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('대사를 입력하거나 생성하세요')));
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final url = Uri.parse(
+        'https://texttospeech.googleapis.com/v1/text:synthesize?key=$googleTtsApiKey',
+      );
+
       final response = await http.post(
-        Uri.parse("https://api.anthropic.com/v1/messages"),
-        headers: {
-          "x-api-key": dotenv.env['CLAUDE_API_KEY'] ?? '',
-          "Content-Type": "application/json",
-          "anthropic-version": "2023-06-01",
-        },
+        url,
+        headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: jsonEncode({
-          "model": "claude-3-opus-20240229",
-          "messages": [
-            {"role": "user", "content": userMessage},
-          ],
-          "max_tokens": 700,
-          "temperature": 0.7,
+          "input": {"text": scriptText},
+          "voice": {
+            "languageCode": "ko-KR",
+            "name": "ko-KR-Wavenet-A",
+            "ssmlGender": "FEMALE",
+          },
+          "audioConfig": {
+            "audioEncoding": "MP3",
+            "speakingRate": 1.2,
+            "pitch": 0.0,
+          },
         }),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Claude API 요청 실패: ${response.body}');
+        throw Exception(
+          'Google TTS API error: ${response.statusCode} ${response.body}',
+        );
       }
 
-      final utf8Body = utf8.decode(response.bodyBytes);
-      final data = jsonDecode(utf8Body);
-      final completionText = data['content']?[0]?['text'] as String? ?? '';
+      final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      final String audioContent = jsonResponse['audioContent'];
 
-      Map<String, dynamic> jsonResult = {};
-      try {
-        jsonResult = jsonDecode(completionText);
-      } catch (_) {
-        jsonResult = {};
-      }
+      final uploadedUrl = await uploadTtsAudioToFirebase(audioContent);
 
-      final result = <String, dynamic>{
-        'main_title': jsonResult['main_title']?.toString() ?? '',
-        'info_price': jsonResult['info_price']?.toString() ?? '',
-        'info_time': jsonResult['info_time']?.toString() ?? '',
-        'info_participants': jsonResult['info_participants']?.toString() ?? '',
-        'refund_policy': jsonResult['refund_policy']?.toString() ?? '',
-        'extra_comment': jsonResult['extra_comment']?.toString() ?? '',
-        'village_name': jsonResult['village_name']?.toString() ?? '',
-        'promo_message': jsonResult['promo_message']?.toString() ?? '',
-        'possible_days': jsonResult['possible_days']?.toString() ?? weekdays,
-        'background_image_url': generatedImageUrl,
+      ttsAudioUrl = uploadedUrl;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('TTS 음성 생성 및 업로드 완료')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('TTS 변환 실패: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<String> uploadImageSafe(XFile xfile) async {
+    final file = File(xfile.path);
+    if (!await file.exists()) {
+      throw Exception('파일이 존재하지 않습니다: ${xfile.path}');
+    }
+    return await fal.storage.upload(xfile);
+  }
+
+  Future<void> pickImages() async {
+    if (isLoading) return;
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage();
+    if (pickedFiles.isNotEmpty) {
+      setState(() {
+        selectedImages = pickedFiles;
+      });
+    }
+  }
+
+  Future<void> generateFalVideo() async {
+    if (selectedImages.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이미지를 선택해주세요')));
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final XFile xfile = selectedImages.first;
+
+      // 안전한 업로드
+      final String imageUrl = await uploadImageSafe(xfile);
+
+      final int durationValue = 10; // 항상 10초 고정
+
+      final inputData = {
+        "prompt": titleController.text.trim(),
+        "image_url": imageUrl,
+        "duration": durationValue,
+        "aspect_ratio": selectedAspectRatio,
+        "negative_prompt": "blur, distort, and low quality",
+        "cfg_scale": 0.5,
       };
 
-      result['poster_url'] = generatedImageUrl;
+      final output = await fal.subscribe(
+        "fal-ai/kling-video/v1.6/standard/image-to-video",
+        input: inputData,
+        logs: true,
+        onQueueUpdate: (update) {
+          print('Queue update: $update');
+        },
+      );
 
-      final galleryImageUrls =
-          selectedImages.isNotEmpty
-              ? await Future.wait(
-                selectedImages.map(
-                  (file) => _uploadFileToFirebase(file, 'gallery'),
-                ),
-              )
-              : [generatedImageUrl];
+      final videoUrl = output.data['video']['url'];
+      if (videoUrl != null && videoUrl.isNotEmpty) {
+        falVideoUrl = videoUrl;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('영상 생성 완료')));
+      } else {
+        throw Exception('영상 URL을 받지 못했습니다');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('영상 생성 실패: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+    }
+  }
 
-      setState(() {
-        aiData = result;
-        isLoading = false;
+  Future<String> pollRenderStatus(
+    String renderId,
+    Map<String, String> headers,
+  ) async {
+    final statusUrl = Uri.parse(
+      'https://api.creatomate.com/v1/renders/$renderId',
+    );
+    const maxAttempts = 40;
+    const pollInterval = Duration(seconds: 3);
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      print('폴링 시도 $attempt 시작');
+      final statusResponse = await http.get(statusUrl, headers: headers);
+
+      if (statusResponse.statusCode != 200) {
+        throw Exception(
+          'Creatomate 상태 조회 실패: ${statusResponse.statusCode} ${statusResponse.body}',
+        );
+      }
+
+      final statusData = jsonDecode(statusResponse.body);
+      final status = statusData['status'];
+
+      print('폴링 시도 $attempt: 상태 = $status');
+
+      if (status == 'done' || status == 'succeeded') {
+        final outputUrl = statusData['url'];
+        if (outputUrl != null && outputUrl.isNotEmpty) {
+          return outputUrl;
+        } else {
+          throw Exception('렌더 완료되었으나 출력 URL이 없습니다.');
+        }
+      } else if (status == 'failed') {
+        throw Exception('렌더링 실패');
+      }
+
+      await Future.delayed(pollInterval);
+    }
+
+    throw Exception('렌더링 완료 대기 시간 초과');
+  }
+
+  Future<void> mergeVideoAndAudioWithCreatomate() async {
+    if (falVideoUrl == null || falVideoUrl!.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('먼저 fal.ai로 영상을 생성하세요')));
+      return;
+    }
+    if (ttsAudioUrl == null || ttsAudioUrl!.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('먼저 TTS 음성을 생성하고 업로드하세요')));
+      return;
+    }
+    if (timedScript.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('AI 대사 타임코드 정보를 먼저 생성하세요')));
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final createUrl = Uri.parse('https://api.creatomate.com/v1/renders');
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $creatomateApiKey',
+      };
+
+      final modifications = <String, dynamic>{
+        "b7a7fa0f-913d-4618-8f9b-544e4a10e023.source": ttsAudioUrl, // Audio
+        "2fbea0e0-6323-48f7-8412-70ba04f59696.source": falVideoUrl, // Video
+      };
+
+      for (var i = 0; i < timedScript.length; i++) {
+        final segment = timedScript[i];
+        // 템플릿 내 텍스트 레이어 아이디를 정확히 맞춰야 합니다.
+        final textLayerId = "text-layer-100$i";
+        modifications["$textLayerId.text"] = segment['text'];
+        // 필요시 duration, time 조정 가능 (템플릿 지원 여부에 따름)
+        // modifications["$textLayerId.time"] = segment['start'];
+        // modifications["$textLayerId.duration"] = segment['end'] - segment['start'];
+      }
+
+      final body = jsonEncode({
+        "template_id": "311204de-b5e6-49de-bfb3-01816e94a127",
+        "output_format": "mp4",
+        "modifications": modifications,
       });
+
+      final createResponse = await http.post(
+        createUrl,
+        headers: headers,
+        body: body,
+      );
+
+      if (createResponse.statusCode == 202) {
+        print('Creatomate 렌더링 예약 상태: 202');
+      } else if (createResponse.statusCode != 200 &&
+          createResponse.statusCode != 201) {
+        throw Exception(
+          'Creatomate API error: ${createResponse.statusCode} ${createResponse.body}',
+        );
+      }
+
+      String? renderId;
+
+      try {
+        final decoded = jsonDecode(createResponse.body);
+        if (decoded is List && decoded.isNotEmpty) {
+          renderId = decoded[0]['id'];
+        } else if (decoded is Map<String, dynamic>) {
+          renderId = decoded['id'];
+        } else {
+          renderId = null;
+        }
+      } catch (e) {
+        renderId = null;
+        print('JSON 파싱 중 오류 발생: $e');
+      }
+
+      if (renderId == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('영상 합성 ID를 받아오지 못했습니다.')));
+        setState(() => isLoading = false);
+        return;
+      }
+
+      print('렌더링 시작: renderId = $renderId');
+
+      final renderedVideoUrl = await pollRenderStatus(renderId, headers);
+
+      if (!mounted) return;
 
       Navigator.push(
         context,
         MaterialPageRoute(
           builder:
-              (_) => ExperiencePreviewPage(
-                aiData: result,
-                mainImageUrl: generatedImageUrl,
-                galleryImageUrls: galleryImageUrls,
+              (_) => VideoPlayerPage(
+                videoUrl: renderedVideoUrl,
+                ttsDuration: Duration(
+                  milliseconds: (ttsDuration * 1000).toInt(),
+                ),
               ),
         ),
       );
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('오류 발생: $e')));
+      ).showSnackBar(SnackBar(content: Text('Creatomate 합성 실패: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() => isLoading = false);
     }
-  }
-
-  Widget _buildInputField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPeriodSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('기간 선택', style: TextStyle(fontSize: 16)),
-        const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: _selectDateRange,
-          icon: const Icon(Icons.calendar_month_outlined),
-          label: Text(
-            selectedDateRange == null
-                ? '날짜 범위 선택'
-                : '${selectedDateRange!.start.year}.${selectedDateRange!.start.month}.${selectedDateRange!.start.day} ~ '
-                    '${selectedDateRange!.end.year}.${selectedDateRange!.end.month}.${selectedDateRange!.end.day}',
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text('가능 요일 선택', style: TextStyle(fontSize: 16)),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    weekdaySelected.values.every((v) => v)
-                        ? Colors.deepOrange.shade400
-                        : null,
-              ),
-              onPressed:
-                  () => _toggleAll(!weekdaySelected.values.every((v) => v)),
-              child: const Text('전체'),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    weekdaySelected['토'] == true && weekdaySelected['일'] == true
-                        ? Colors.deepOrange.shade400
-                        : null,
-              ),
-              onPressed: _toggleWeekend,
-              child: const Text('주말'),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    weekdaySelected.entries
-                            .where(
-                              (e) => ['월', '화', '수', '목', '금'].contains(e.key),
-                            )
-                            .every((e) => e.value)
-                        ? Colors.deepOrange.shade400
-                        : null,
-              ),
-              onPressed: _toggleWeekday,
-              child: const Text('평일'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          children:
-              weekdaySelected.keys.map((day) {
-                final selected = weekdaySelected[day]!;
-                return FilterChip(
-                  label: Text(day),
-                  selected: selected,
-                  showCheckmark: false,
-                  selectedColor: Colors.deepOrange.shade200,
-                  onSelected: (bool value) {
-                    setState(() {
-                      weekdaySelected[day] = value;
-                    });
-                  },
-                  labelStyle: TextStyle(
-                    color: selected ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  backgroundColor: Colors.grey.shade200,
-                );
-              }).toList(),
-        ),
-      ],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI 상세페이지 생성')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInputField('체험명', titleController),
-            _buildInputField('마을명', villageController),
-            _buildInputField('비용', priceController),
-            _buildInputField('인원', peopleController),
-            const SizedBox(height: 16),
-            _buildPeriodSelector(),
-            const SizedBox(height: 16),
-
-            // 배경 이미지 직접 선택 버튼 및 미리보기
-            ElevatedButton.icon(
-              onPressed: _pickBackgroundImage,
-              icon: const Icon(Icons.image_outlined),
-              label: const Text('배경 이미지 직접 선택'),
-            ),
-            if (backgroundImageFile != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8, bottom: 16),
-                child: Image.file(
-                  backgroundImageFile!,
-                  width: double.infinity,
-                  height: 150,
-                  fit: BoxFit.cover,
+      appBar: AppBar(title: const Text('영상+음성 합성 데모')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: '제목 입력'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: imageDescriptionController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: '이미지 설명 입력',
+                  hintText: '이미지에 대한 간단한 설명을 입력하세요',
+                  border: OutlineInputBorder(),
                 ),
               ),
-
-            ElevatedButton.icon(
-              onPressed: _pickImages,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('체험 사진 선택 (최대 4장)'),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  selectedImages
-                      .take(4)
-                      .map(
-                        (file) => Image.file(
-                          file,
+              const SizedBox(height: 12),
+              TextField(
+                controller: scriptController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: '영상 대사 입력',
+                  hintText: '직접 입력하거나 AI로 생성하세요',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: isLoading ? null : generateAIScript,
+                    child: const Text('AI 대사 생성'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : convertScriptToTTSAndUpload,
+                    child: const Text('TTS 음성 생성 및 업로드'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: isLoading ? null : pickImages,
+                icon: const Icon(Icons.photo_library),
+                label: const Text('이미지 선택'),
+              ),
+              if (selectedImages.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 150,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: selectedImages.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Image.file(
+                          File(selectedImages[index].path),
                           width: 100,
-                          height: 100,
                           fit: BoxFit.cover,
                         ),
-                      )
-                      .toList(),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: isLoading ? null : _generateDetailPage,
-                child:
-                    isLoading
-                        ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Text('AI로 생성하기'),
+                      );
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: isLoading ? null : generateFalVideo,
+                child: const Text('fal.ai 영상 생성'),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: isLoading ? null : mergeVideoAndAudioWithCreatomate,
+                child: const Text('Creatomate로 영상+음성 합성'),
+              ),
+            ],
+          ),
         ),
       ),
     );

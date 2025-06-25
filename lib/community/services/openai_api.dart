@@ -1,3 +1,4 @@
+// openai_api.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -10,7 +11,7 @@ Future<String?> generateImageInpainting({
   required String prompt,
   int n = 1,
   String size = "1024x1024",
-  String model = 'dall-e-3', // 최신 인페인팅 모델 기본값
+  String model = 'dall-e-3',
 }) async {
   final url = Uri.parse("https://api.openai.com/v1/images/edits");
   final request = http.MultipartRequest('POST', url);
